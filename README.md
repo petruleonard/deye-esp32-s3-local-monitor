@@ -139,6 +139,14 @@ idf.py -p COMx flash
 ├── web/
 │   └── index.html           # Interfața web completă (Dashboard SVG, Parametri, Istoric, PWA)
 ├── docs/                    # Capturi de ecran pentru documentație
+├── LICENSE                  # Licență MIT
 ├── partitions.csv           # Tabelul de partiții pentru Flash 16 MB (Dual OTA + History Storage)
 └── CMakeLists.txt           # Configurație build ESP-IDF
 ```
+
+---
+
+## 📄 Licență
+
+Acest proiect este distribuit sub licența **MIT License** — vezi fișierul [LICENSE](LICENSE) pentru detalii.
+Software-ul este oferit „ca atare” (*AS IS*), fără garanții, exclusiv în scop de monitorizare și automatizare locală.
