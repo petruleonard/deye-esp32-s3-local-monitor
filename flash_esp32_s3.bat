@@ -27,15 +27,18 @@ if exist "C:\Espressif\tools\python\v6.1\venv\Scripts\python.exe" (
 )
 
 if "!PYTHON_EXE!"=="" (
-    where python >nul 2>nul && set "PYTHON_EXE=python"
+    python --version >nul 2>nul && set "PYTHON_EXE=python"
 )
 if "!PYTHON_EXE!"=="" (
-    where py >nul 2>nul && set "PYTHON_EXE=py"
+    py --version >nul 2>nul && set "PYTHON_EXE=py"
 )
 
 if "!PYTHON_EXE!"=="" (
-    echo [EROARE] Nu am gasit Python instalat pe acest PC!
-    echo Instaleaza Python de pe https://www.python.org/ ^(bifeaza "Add Python to PATH"^).
+    echo [EROARE] Nu am gasit Python 3 instalat pe acest PC!
+    echo.
+    echo  Pasul 1: Descarca si instaleaza Python 3 de pe: https://www.python.org/downloads/
+    echo  Pasul 2: IMPORTANT - La instalare bifeaza casuta "Add python.exe to PATH"!
+    echo  Pasul 3: Dupa instalare, da din nou dublu-click pe flash_esp32_s3.bat.
     echo.
     pause
     exit /b 1

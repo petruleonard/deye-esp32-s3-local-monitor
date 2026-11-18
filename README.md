@@ -62,10 +62,22 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
 
 ### 1. Scrierea firmware-ului pe ESP32-S3 (prima dată, prin cablu USB)
 
-#### Varianta A — Rapid, cu un singur dublu-click pe **`flash_esp32_s3.bat`** (fără ESP-IDF)
-1. Conectează placa **ESP32-S3 DevKitC-1 N16R8** la PC prin cablu USB.
-2. Rulează **`flash_esp32_s3.bat`**:
-   - Scriptul detectează automat Python (și instalează singur `esptool` dacă lipsește), listează porturile `COM` găsite și scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.3.30` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de backup `ota_1` la `0x320000` pentru rollback):
+#### Varianta A — Rapid, cu un singur dublu-click pe **`flash_esp32_s3.bat`** (fără ESP-IDF și fără CMD)
+
+**Ce trebuie să ai instalat pe PC (Windows 10 / 11):**
+1. **Python 3** — descărcat gratuit de pe [python.org/downloads](https://www.python.org/downloads/) *(important: la instalare bifează căsuța **"Add python.exe to PATH"**)*.
+   - **Nu** trebuie să instalezi manual `esptool` sau `ESP-IDF` — scriptul `flash_esp32_s3.bat` verifică și instalează singur utilitarul `esptool` la prima rulare.
+2. **Driverul USB-Serial** *(doar dacă Windows nu recunoaște placa în Device Manager la `Ports (COM & LPT)`)*:
+   - Dacă folosești portul **`USB` (Native USB / OTG)** de pe ESP32-S3, Windows 10/11 îl recunoaște automat fără niciun driver.
+   - Dacă folosești portul **`UART` / `COM`** de pe placă, Windows instalează de obicei automat driverul **CH343 / CH340** sau **Silicon Labs CP210x** prin Windows Update.
+
+**Pași de încărcare (nu este nevoie să deschizi CMD):**
+1. Pe pagina GitHub a proiectului, apasă butonul verde **`<> Code`** → **`Download ZIP`**, apoi **dezarhivează** folderul pe PC (ex. pe Desktop).
+2. Conectează placa **ESP32-S3 DevKitC-1 N16R8** la PC printr-un cablu USB de date.
+3. Dă **dublu-click direct din Windows Explorer pe fișierul `flash_esp32_s3.bat`** *(sau rulează-l din `CMD` / `PowerShell` dacă preferi)*:
+   - Se deschide automat o fereastră care detectează Python, instalează `esptool` (dacă nu există deja) și afișează lista porturilor `COM` găsite pe PC.
+   - Apasă direct tasta **`Enter`** pentru a folosi portul `COM` detectat automat (sau tastează portul dorit, de ex. `COM7`, și apasă `Enter`).
+   - Scriptul scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.3.30` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de siguranță `ota_1` la `0x320000` pentru rollback automat):
    ```bash
    python -m esptool --chip esp32s3 -b 460800 write_flash --flash-mode dio --flash-size 16MB ^
      0x0 build/bootloader/bootloader.bin ^
@@ -74,6 +86,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
      0x20000 build/deye_esp32_s3_bridge.bin ^
      0x320000 build/deye_esp32_s3_bridge.bin
    ```
+   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.3.30 incarcat cu succes`** până apeși o tastă.
 
 #### Varianta B — Compilare din codul sursă (ESP-IDF v5.x / v6.x)
 ```bash
