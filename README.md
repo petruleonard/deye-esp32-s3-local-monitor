@@ -21,7 +21,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
   - La sfârșitul intervalului, restaurează automat curentul normal al invertorului (ex. `60 A` / `100 A`, citit dinamic din registrul invertorului).
   - Scrie în registrul invertorului doar la tranzițiile orare (maximum 2 scrieri/zi) pentru a proteja memoria internă a invertorului.
 
-![Program Incarcare Mod Vara](docs/battery_schedule_preview.jpg)
+![Program Incarcare Mod Vara](docs/battery_view.png)
 
 - **Alerte Telegram cu Butoane `ON/OFF` individuale**:
   - **Alertă Lipsă Tensiune Rețea** (în ecranul *Parametrii Rețea*): trimite notificare pe Telegram la căderea rețelei (`< 50 V`) și la revenirea tensiunii, cu SoC-ul bateriei și consumul casei.
@@ -29,6 +29,22 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
 - **Istoric Energetic Local (Zi / Lună / An / Total)** salvat în partiția Flash dedicată de pe ESP32-S3.
 - **Actualizare Firmware prin Wi-Fi (OTA `.bin`)** direct din interfața web + rollback automat în caz de eroare.
 - **Securizare prin Cod PIN** (configurat la prima instalare în portalul Wi-Fi, cu blocare temporară după 3 încercări greșite).
+
+---
+
+## 📱 Capturi de Ecran din Aplicație
+
+| Parametrii & Stare Baterie | Parametrii Rețea & Alertă |
+| :---: | :---: |
+| ![Baterie](docs/battery_view.png) | ![Retea](docs/grid_view.png) |
+
+| Parametrii Panouri Solare | Analiză Consum Casă |
+| :---: | :---: |
+| ![Panouri Solare](docs/solar_view.png) | ![Consum Casa](docs/load_view.png) |
+
+| Istoric Platformă Deye | Setări Sistem, Scanare Invertor & OTA |
+| :---: | :---: |
+| ![Istoric](docs/history_view.png) | ![Setari](docs/settings_view.png) |
 
 ---
 
