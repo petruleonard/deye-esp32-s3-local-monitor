@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.32",
+  "version": "v1.3.33",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Alerta Telegram risc inghet baterie (prag reglabil, alerta la fiecare grad in scadere) + verificare zilnica automata la 18:00 a actualizarilor pe Telegram."
+  "notes": "Afiseaza -- °C pentru temperaturi (invertor si baterie) cand nu exista comunicatie cu invertorul, in loc de 0.0 °C."
 }

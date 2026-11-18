@@ -1313,7 +1313,8 @@
       document.getElementById("sb-a").innerText = (d.battery_current || 0).toFixed(1) + " A";
       document.getElementById("sb-cap").innerText = (d.battery_capacity_kwh || 0).toFixed(0) + " kWh";
       document.getElementById("sb-pwr").innerText = fmtW(bW);
-      document.getElementById("sb-temp").innerText = (d.battery_temp_c || 0).toFixed(1) + " °C";
+      const hasComm = !!d.logger_connected;
+      document.getElementById("sb-temp").innerText = hasComm ? ((d.battery_temp_c || 0).toFixed(1) + " °C") : "-- °C";
       document.getElementById("sb-soh").innerText = (d.battery_soh || 0) + "%";
       syncBatteryControlsFromTelemetry(d);
 
@@ -1330,8 +1331,8 @@
       document.getElementById("sl-src").innerText = d.load_source_str || "-";
 
       // Side Panel
-      document.getElementById("side-temp").innerText = (d.inverter_temp_c || 0).toFixed(1) + " °C";
-      document.getElementById("side-bat-temp").innerText = (d.battery_temp_c || 0).toFixed(1) + " °C";
+      document.getElementById("side-temp").innerText = hasComm ? ((d.inverter_temp_c || 0).toFixed(1) + " °C") : "-- °C";
+      document.getElementById("side-bat-temp").innerText = hasComm ? ((d.battery_temp_c || 0).toFixed(1) + " °C") : "-- °C";
       document.getElementById("side-pv-today").innerText = (d.pv_today_kwh || 0).toFixed(1) + " kWh";
       document.getElementById("side-load-today").innerText = (d.load_today_kwh || 0).toFixed(1) + " kWh";
       document.getElementById("side-grid-buy-today").innerText = (d.grid_buy_today_kwh || 0).toFixed(1) + " kWh";
