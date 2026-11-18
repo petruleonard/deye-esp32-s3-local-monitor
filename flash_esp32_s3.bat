@@ -62,15 +62,20 @@ if not exist "build\deye_esp32_s3_bridge.bin" (
     exit /b 1
 )
 
-REM 2. Detecteaza porturile COM disponibile
+REM 2. Detecteaza porturile COM disponibile (CH343, CP2102, CH340, USB Nativ ESP32-S3 / JTAG)
 echo Porturi COM detectate pe PC:
-powershell -NoProfile -Command "Get-CimInstance Win32_SerialPort | ForEach-Object { Write-Host ('  -> ' + $_.DeviceID + ' : ' + $_.Name) }" 2>nul
-echo.
-
-set "DEFAULT_PORT=COM7"
-for /f "tokens=*" %%P in ('powershell -NoProfile -Command "(Get-CimInstance Win32_SerialPort | Select-Object -Last 1).DeviceID" 2^>nul') do (
-    if not "%%P"=="" set "DEFAULT_PORT=%%P"
+set "DEFAULT_PORT="
+set "LAST_PORT="
+for /f "tokens=1,* delims=|" %%A in ('powershell -NoProfile -Command "$ports = Get-PnpDevice -Class Ports -Status OK | Sort-Object FriendlyName; foreach ($d in $ports) { if ($d.FriendlyName -match '\((COM\d+)\)') { $c = $matches[1]; Write-Output ('PORT|' + $c + ' : ' + $d.FriendlyName); if ($d.InstanceId -match '^USB\\' -or $d.FriendlyName -match 'CH343|CH340|CH341|CH9102|CP210|JTAG|USB Serial|ESP32') { Write-Output ('DEF|' + $c) } } }" 2^>nul') do (
+    if "%%A"=="PORT" (
+        echo   -^> %%B
+        for /f "tokens=1 delims= " %%C in ("%%B") do set "LAST_PORT=%%C"
+    )
+    if "%%A"=="DEF" if "!DEFAULT_PORT!"=="" set "DEFAULT_PORT=%%B"
 )
+if "!DEFAULT_PORT!"=="" set "DEFAULT_PORT=!LAST_PORT!"
+if "!DEFAULT_PORT!"=="" set "DEFAULT_PORT=COM7"
+echo.
 
 set /p "COM_PORT=Introdu portul COM al placutei ESP32-S3 (Enter pentru %DEFAULT_PORT%): "
 if "%COM_PORT%"=="" set "COM_PORT=%DEFAULT_PORT%"
