@@ -1567,6 +1567,7 @@
           led.classList.remove("connected");
           led.title = "Lipsa conexiune cu invertorul";
           applyTelemetryToUI({ pv_power_w: 0, grid_power_w: 0, battery_power_w: 0, battery_soc: 0, load_power_w: 0 });
+          if (json && json.data) syncBatteryControlsFromTelemetry(json.data);
         }
       } catch (e) {
         updateWifiSignal(false, 0);

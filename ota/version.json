@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.33",
+  "version": "v1.3.34",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Afiseaza -- °C pentru temperaturi (invertor si baterie) cand nu exista comunicatie cu invertorul, in loc de 0.0 °C."
+  "notes": "Sincronizeaza corect in interfata web setarile salvate (Mod Vara, alerte BMS/inghet/retea) chiar si cand invertorul este deconectat."
 }
