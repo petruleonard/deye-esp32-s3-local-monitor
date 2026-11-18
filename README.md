@@ -62,15 +62,17 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
 
 ### 1. Scrierea firmware-ului pe ESP32-S3 (prima dată, prin cablu USB)
 
-#### Varianta A — Rapid, cu fișierele precompilate (`build/`)
-1. Conectează placa **ESP32-S3 DevKitC-1 N16R8** la PC prin portul USB (**USB** / **UART**).
-2. Rulează scriptul **`flash_esp32_s3.bat`** (sau cu `esptool.py`):
+#### Varianta A — Rapid, cu un singur dublu-click pe **`flash_esp32_s3.bat`** (fără ESP-IDF)
+1. Conectează placa **ESP32-S3 DevKitC-1 N16R8** la PC prin cablu USB.
+2. Rulează **`flash_esp32_s3.bat`**:
+   - Scriptul detectează automat Python (și instalează singur `esptool` dacă lipsește), listează porturile `COM` găsite și scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.3.30` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de backup `ota_1` la `0x320000` pentru rollback):
    ```bash
-   esptool --chip esp32s3 -b 460800 write_flash --flash_mode dio --flash_size 16MB ^
+   python -m esptool --chip esp32s3 -b 460800 write_flash --flash-mode dio --flash-size 16MB ^
      0x0 build/bootloader/bootloader.bin ^
      0x8000 build/partition_table/partition-table.bin ^
-     0xe000 build/ota_data_initial.bin ^
-     0x10000 build/deye_esp32_s3_bridge.bin
+     0xf000 build/ota_data_initial.bin ^
+     0x20000 build/deye_esp32_s3_bridge.bin ^
+     0x320000 build/deye_esp32_s3_bridge.bin
    ```
 
 #### Varianta B — Compilare din codul sursă (ESP-IDF v5.x / v6.x)
