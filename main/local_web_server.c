@@ -8,6 +8,8 @@
 #include "telegram_notify.h"
 #include "wifi_manager.h"
 
+#include "esp_crt_bundle.h"
+#include "esp_http_client.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
@@ -708,6 +710,256 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+typedef struct {
+    char state[16];
+    int progress;
+    char message[128];
+    char bin_url[256];
+} github_ota_status_t;
+
+static github_ota_status_t s_gh_ota = {
+    .state = "idle",
+    .progress = 0,
+    .message = "",
+    .bin_url = GITHUB_OTA_BIN_URL
+};
+
+static bool extract_json_str(const char *json, const char *key, char *out, size_t out_sz) {
+    out[0] = '\0';
+    char pat[64];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char *p = strstr(json, pat);
+    if (!p) return false;
+    p = strchr(p + strlen(pat), ':');
+    if (!p) return false;
+    p++;
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+    if (*p != '"') return false;
+    p++;
+    size_t i = 0;
+    while (*p && *p != '"' && i + 1 < out_sz) {
+        if (*p == '\\' && p[1]) p++;
+        out[i++] = *p++;
+    }
+    out[i] = '\0';
+    return i > 0;
+}
+
+static bool fetch_github_version_json(char *out_ver, size_t ver_sz, char *out_url, size_t url_sz, char *out_notes, size_t notes_sz) {
+    esp_http_client_config_t cfg = {
+        .url = GITHUB_OTA_VERSION_URL,
+        .timeout_ms = 10000,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    if (!client) return false;
+
+    if (esp_http_client_open(client, 0) != ESP_OK) {
+        esp_http_client_cleanup(client);
+        return false;
+    }
+    int content_len = esp_http_client_fetch_headers(client);
+    int status = esp_http_client_get_status_code(client);
+    if (status != 200 || content_len > 2048) {
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        return false;
+    }
+
+    char buf[1024];
+    int total = 0;
+    while (total < (int)sizeof(buf) - 1) {
+        int r = esp_http_client_read(client, buf + total, sizeof(buf) - 1 - total);
+        if (r <= 0) break;
+        total += r;
+    }
+    buf[total] = '\0';
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+
+    if (!extract_json_str(buf, "version", out_ver, ver_sz)) return false;
+    if (!extract_json_str(buf, "url", out_url, url_sz) || strncmp(out_url, "https://", 8) != 0) {
+        snprintf(out_url, url_sz, "%s", GITHUB_OTA_BIN_URL);
+    }
+    extract_json_str(buf, "notes", out_notes, notes_sz);
+    return out_ver[0] != '\0';
+}
+
+static esp_err_t ota_check_get_handler(httpd_req_t *req) {
+    if (!check_admin_pin_hdr(req)) return ESP_OK;
+    httpd_resp_set_type(req, "application/json");
+
+    char latest[32] = "";
+    char url[256] = GITHUB_OTA_BIN_URL;
+    char notes[160] = "";
+    if (!fetch_github_version_json(latest, sizeof(latest), url, sizeof(url), notes, sizeof(notes))) {
+        httpd_resp_send(req, "{\"ok\":false,\"error\":\"Nu s-a putut contacta GitHub (verifica conexiunea la internet)\"}", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
+
+    snprintf(s_gh_ota.bin_url, sizeof(s_gh_ota.bin_url), "%s", url);
+    bool avail = (strcmp(latest, FW_VERSION) != 0);
+
+    char resp[512];
+    snprintf(resp, sizeof(resp),
+             "{\"ok\":true,\"current\":\"%s\",\"latest\":\"%s\",\"update_available\":%s,\"notes\":\"%s\"}",
+             FW_VERSION, latest, avail ? "true" : "false", notes);
+    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+static void ota_github_task(void *arg) {
+    (void)arg;
+    snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "running");
+    s_gh_ota.progress = 0;
+    snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Conectare la GitHub...");
+
+    const esp_partition_t *update_part = esp_ota_get_next_update_partition(NULL);
+    if (!update_part) {
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Partitie OTA indisponibila");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    esp_http_client_config_t cfg = {
+        .url = s_gh_ota.bin_url,
+        .timeout_ms = 20000,
+        .buffer_size = 4096,
+        .buffer_size_tx = 1024,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    if (!client) {
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Eroare initializare HTTP client");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    if (esp_http_client_open(client, 0) != ESP_OK) {
+        esp_http_client_cleanup(client);
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Nu s-a putut deschide conexiunea HTTPS");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    int content_len = esp_http_client_fetch_headers(client);
+    int status = esp_http_client_get_status_code(client);
+    if (status != 200 || content_len <= 0 || content_len > 0x300000) {
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Fisier firmware indisponibil (HTTP %d)", status);
+        vTaskDelete(NULL);
+        return;
+    }
+
+    esp_ota_handle_t ota_handle = 0;
+    esp_err_t err = esp_ota_begin(update_part, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
+    if (err != ESP_OK) {
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Eroare pornire scriere Flash");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    char *buf = malloc(4096);
+    if (!buf) {
+        esp_ota_abort(ota_handle);
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Memorie insuficienta");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Se descarca firmware de pe GitHub...");
+    int written = 0;
+    while (written < content_len) {
+        int r = esp_http_client_read(client, buf, 4096);
+        if (r < 0) {
+            free(buf);
+            esp_ota_abort(ota_handle);
+            esp_http_client_close(client);
+            esp_http_client_cleanup(client);
+            snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+            snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Conexiune intrerupta in timpul descarcarii");
+            vTaskDelete(NULL);
+            return;
+        }
+        if (r == 0) break;
+        err = esp_ota_write(ota_handle, buf, r);
+        if (err != ESP_OK) {
+            free(buf);
+            esp_ota_abort(ota_handle);
+            esp_http_client_close(client);
+            esp_http_client_cleanup(client);
+            snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+            snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Eroare scriere Flash");
+            vTaskDelete(NULL);
+            return;
+        }
+        written += r;
+        s_gh_ota.progress = (written * 100) / content_len;
+    }
+
+    free(buf);
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+
+    if (written != content_len || esp_ota_end(ota_handle) != ESP_OK) {
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Imagine .bin incompleta sau invalida");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    if (esp_ota_set_boot_partition(update_part) != ESP_OK) {
+        snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "error");
+        snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Eroare activare partitie OTA");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    s_gh_ota.progress = 100;
+    snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "done");
+    snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Actualizare reusita! ESP32-S3 reporneste...");
+    ESP_LOGI(TAG, "GitHub OTA reusit pe '%s'! Repornesc in 1.5s...", update_part->label);
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    esp_restart();
+    vTaskDelete(NULL);
+}
+
+static esp_err_t ota_github_post_handler(httpd_req_t *req) {
+    if (!check_admin_pin_hdr(req)) return ESP_OK;
+    httpd_resp_set_type(req, "application/json");
+    if (strcmp(s_gh_ota.state, "running") == 0) {
+        httpd_resp_send(req, "{\"ok\":false,\"error\":\"Actualizarea ruleaza deja\"}", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
+    snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "running");
+    s_gh_ota.progress = 0;
+    snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Pornire actualizare GitHub...");
+    xTaskCreate(ota_github_task, "ota_github", 8192, NULL, 5, NULL);
+    httpd_resp_send(req, "{\"ok\":true}", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+static esp_err_t ota_status_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json");
+    char resp[256];
+    snprintf(resp, sizeof(resp),
+             "{\"state\":\"%s\",\"progress\":%d,\"message\":\"%s\"}",
+             s_gh_ota.state, s_gh_ota.progress, s_gh_ota.message);
+    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
 static esp_err_t captive_redirect_handler(httpd_req_t *req) {
     if (wifi_manager_is_ap_active()) {
         httpd_resp_set_status(req, "302 Found");
@@ -792,6 +1044,9 @@ esp_err_t local_web_server_init(void) {
         { .uri = "/api/telegram/test", .method = HTTP_POST, .handler = telegram_test_post_handler },
         { .uri = "/api/logger/scan",   .method = HTTP_GET,  .handler = logger_scan_get_handler },
         { .uri = "/api/ota",           .method = HTTP_POST, .handler = ota_post_handler },
+        { .uri = "/api/ota/check",     .method = HTTP_GET,  .handler = ota_check_get_handler },
+        { .uri = "/api/ota/github",    .method = HTTP_POST, .handler = ota_github_post_handler },
+        { .uri = "/api/ota/status",    .method = HTTP_GET,  .handler = ota_status_get_handler },
         { .uri = "/api/pin/verify",    .method = HTTP_POST, .handler = pin_verify_post_handler },
         { .uri = "/*",                 .method = HTTP_GET,  .handler = captive_redirect_handler },
     };

@@ -1070,10 +1070,12 @@
       <button class="apply-btn" style="margin-top:4px;" onclick="saveSettings()">Salveaza Setarile</button>
       <button class="apply-btn" style="margin-top:6px; background:#0f293a; color:#38bdf8; border:1px solid #0284c7;" onclick="testTelegram()">Testeaza Notificare Telegram</button>
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid #334155;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <label class="cfg-lbl" style="margin:0;">Actualizare Firmware prin Wi-Fi (OTA .bin)</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label class="cfg-lbl" style="margin:0;">Actualizare Firmware prin Wi-Fi (OTA)</label>
           <span id="fwVersionBadge" style="font-size:11px; color:#38bdf8; font-weight:700;"></span>
         </div>
+        <button class="apply-btn" id="btnOtaGithubCheck" style="margin-top:0; margin-bottom:6px; background:#0f293a; color:#38bdf8; border:1px solid #0284c7;" onclick="checkGithubOTA()">Verifica Actualizari pe GitHub</button>
+        <div id="ota-github-box" style="display:none; margin-bottom:8px; padding:8px; border-radius:8px; background:#0f172a; border:1px solid #1e293b; font-size:12px;"></div>
         <input class="cfg-inp" type="file" id="otaFile" accept=".bin" style="padding:6px; font-size:12px;">
         <button class="apply-btn" id="btnOtaUpload" style="margin-top:6px; background:#1e1b4b; color:#c4b5fd; border:1px solid #7c3aed;" onclick="uploadOTA()">Incarca Firmware (.bin)</button>
         <div id="ota-progress-wrap" style="display:none; margin-top:8px; background:#0f172a; border:1px solid #334155; border-radius:6px; height:8px; overflow:hidden;">
@@ -2046,6 +2048,88 @@
         msg.innerText = "Eroare conexiune in timpul upload-ului OTA.";
       };
       xhr.send(file);
+    }
+
+    async function checkGithubOTA() {
+      const btn = document.getElementById("btnOtaGithubCheck");
+      const box = document.getElementById("ota-github-box");
+      btn.disabled = true;
+      box.style.display = "block";
+      box.innerHTML = "<span style='color:#94a3b8;'>Se verifica ultima versiune pe GitHub...</span>";
+      try {
+        const res = await fetch("/api/ota/check", {
+          headers: { "X-Admin-Pin": localStorage.getItem("deye_local_pin") || "" },
+        });
+        const d = await res.json();
+        if (!d.ok) {
+          box.innerHTML = `<span style="color:#ef4444;">${d.error || "Eroare la verificarea GitHub."}</span>`;
+        } else if (d.update_available) {
+          box.innerHTML = `<div style="color:#10b981;font-weight:700;margin-bottom:4px;">Versiune noua disponibila: ${d.latest} (curent: ${d.current})</div>` +
+            (d.notes ? `<div style="color:#cbd5e1;margin-bottom:6px;">${d.notes}</div>` : "") +
+            `<button class="apply-btn" style="margin-top:2px;background:#065f46;color:#6ee7b7;border:1px solid #10b981;" onclick="startGithubOTA()">Instaleaza ${d.latest} de pe GitHub</button>`;
+        } else {
+          box.innerHTML = `<span style="color:#38bdf8;">Ai deja ultima versiune (${d.current}).</span>`;
+        }
+      } catch (e) {
+        box.innerHTML = "<span style='color:#ef4444;'>Eroare de conexiune cu ESP32-S3.</span>";
+      }
+      btn.disabled = false;
+    }
+
+    async function startGithubOTA() {
+      const msg = document.getElementById("cfg-status-msg");
+      const pWrap = document.getElementById("ota-progress-wrap");
+      const pBar = document.getElementById("ota-progress-bar");
+      const box = document.getElementById("ota-github-box");
+      if (box) box.style.display = "none";
+      if (pWrap && pBar) { pWrap.style.display = "block"; pBar.style.width = "0%"; }
+      msg.style.color = "#38bdf8";
+      msg.innerText = "Pornire descarcare firmware de pe GitHub...";
+      try {
+        const res = await fetch("/api/ota/github", {
+          method: "POST",
+          headers: { "X-Admin-Pin": localStorage.getItem("deye_local_pin") || "" },
+        });
+        const d = await res.json();
+        if (!d.ok) {
+          if (pWrap) pWrap.style.display = "none";
+          msg.style.color = "#ef4444";
+          msg.innerText = "Eroare OTA GitHub: " + (d.error || "necunoscuta");
+          return;
+        }
+        pollGithubOTA();
+      } catch (e) {
+        if (pWrap) pWrap.style.display = "none";
+        msg.style.color = "#ef4444";
+        msg.innerText = "Eroare de conexiune cu ESP32-S3.";
+      }
+    }
+
+    async function pollGithubOTA() {
+      const msg = document.getElementById("cfg-status-msg");
+      const pWrap = document.getElementById("ota-progress-wrap");
+      const pBar = document.getElementById("ota-progress-bar");
+      try {
+        const res = await fetch("/api/ota/status");
+        const d = await res.json();
+        if (pBar) pBar.style.width = `${d.progress || 0}%`;
+        if (d.state === "running") {
+          msg.style.color = "#38bdf8";
+          msg.innerText = `${d.message || "Se descarca..."} (${d.progress || 0}%)`;
+          setTimeout(pollGithubOTA, 500);
+        } else if (d.state === "done") {
+          if (pBar) pBar.style.width = "100%";
+          msg.style.color = "#10b981";
+          msg.innerText = d.message || "OTA reusit! Repornire... Pagina se va reincarca in 8s.";
+          setTimeout(() => location.reload(), 8000);
+        } else if (d.state === "error") {
+          if (pWrap) pWrap.style.display = "none";
+          msg.style.color = "#ef4444";
+          msg.innerText = "Eroare OTA GitHub: " + (d.message || "necunoscuta");
+        }
+      } catch (e) {
+        setTimeout(pollGithubOTA, 1000);
+      }
     }
 
     async function testTelegram() {
