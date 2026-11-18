@@ -349,6 +349,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         "\"battery_charge_total_kwh\":%.2f,\"battery_discharge_total_kwh\":%.2f,"
         "\"bat_max_chg_a\":%u,\"bat_norm_chg_a\":%u,\"bat_sched_enabled\":%s,"
         "\"bat_pause_start\":%u,\"bat_pause_end\":%u,\"tg_bms_alert\":%s,\"tg_grid_alert\":%s,"
+        "\"tg_bat_freeze_alert\":%s,\"bat_freeze_temp\":%d,"
         "\"grid_power_w\":%ld,\"grid_volts\":%.1f,\"grid_l2_volts\":%.1f,\"grid_l3_volts\":%.1f,"
         "\"grid_l1_power_w\":%ld,\"grid_l2_power_w\":%ld,\"grid_l3_power_w\":%ld,\"grid_hz\":%.2f,"
         "\"grid_buy_today_kwh\":%.2f,\"grid_sell_today_kwh\":%.2f,"
@@ -374,6 +375,8 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         (unsigned)g_settings.bat_pause_start_min, (unsigned)g_settings.bat_pause_end_min,
         g_settings.tg_bms_alert_enabled ? "true" : "false",
         g_settings.tg_grid_alert_enabled ? "true" : "false",
+        g_settings.tg_bat_freeze_alert_enabled ? "true" : "false",
+        (int)g_settings.bat_freeze_temp_c,
         (long)d.grid_power_w, d.grid_volts, d.grid_l2_volts, d.grid_l3_volts,
         (long)d.grid_l1_power_w, (long)d.grid_l2_power_w, (long)d.grid_l3_power_w, d.grid_hz,
         d.grid_buy_today_kwh, d.grid_sell_today_kwh,
@@ -563,6 +566,15 @@ static esp_err_t battery_config_post_handler(httpd_req_t *req) {
     if (json_get_bool(body, "bat_sched_enabled", &bval)) cfg.bat_sched_enabled = bval;
     if (json_get_bool(body, "tg_bms_alert", &bval)) cfg.tg_bms_alert_enabled = bval;
     if (json_get_bool(body, "tg_grid_alert", &bval)) cfg.tg_grid_alert_enabled = bval;
+    if (json_get_bool(body, "tg_bat_freeze_alert", &bval)) cfg.tg_bat_freeze_alert_enabled = bval;
+    const char *pfrz = strstr(body, "\"bat_freeze_temp\"");
+    if (pfrz) {
+        const char *c = strchr(pfrz, ':');
+        if (c) {
+            int tv = (int)strtol(c + 1, NULL, 10);
+            if (tv >= -10 && tv <= 25) cfg.bat_freeze_temp_c = (int8_t)tv;
+        }
+    }
     uint32_t uval = 0;
     if (json_get_u32(body, "bat_pause_start", &uval) && uval < 1440) cfg.bat_pause_start_min = (uint16_t)uval;
     if (json_get_u32(body, "bat_pause_end", &uval) && uval < 1440) cfg.bat_pause_end_min = (uint16_t)uval;
@@ -745,7 +757,7 @@ static bool extract_json_str(const char *json, const char *key, char *out, size_
     return i > 0;
 }
 
-static bool fetch_github_version_json(char *out_ver, size_t ver_sz, char *out_url, size_t url_sz, char *out_notes, size_t notes_sz) {
+bool github_ota_check_latest(char *out_ver, size_t ver_sz, char *out_url, size_t url_sz, char *out_notes, size_t notes_sz) {
     esp_http_client_config_t cfg = {
         .url = GITHUB_OTA_VERSION_URL,
         .timeout_ms = 10000,
@@ -792,7 +804,7 @@ static esp_err_t ota_check_get_handler(httpd_req_t *req) {
     char latest[32] = "";
     char url[256] = GITHUB_OTA_BIN_URL;
     char notes[160] = "";
-    if (!fetch_github_version_json(latest, sizeof(latest), url, sizeof(url), notes, sizeof(notes))) {
+    if (!github_ota_check_latest(latest, sizeof(latest), url, sizeof(url), notes, sizeof(notes))) {
         httpd_resp_send(req, "{\"ok\":false,\"error\":\"Nu s-a putut contacta GitHub (verifica conexiunea la internet)\"}", HTTPD_RESP_USE_STRLEN);
         return ESP_OK;
     }

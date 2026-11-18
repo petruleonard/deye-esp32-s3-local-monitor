@@ -887,9 +887,19 @@
             </div>
             <div id="batSchedMsg" style="font-size:11px; margin-top:5px; color:#94a3b8;"></div>
           </div>
-          <div class="param-box" style="padding:14px 12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:12.5px; font-weight:700; color:#cbd5e1;">Alerta Telegram pierdere comunicatie BMS</span>
-            <button type="button" class="tgl-pill" id="bmsAlertToggle" onclick="toggleBmsAlert()">OFF</button>
+          <div class="param-box" style="padding:12px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:12.5px; font-weight:700; color:#cbd5e1;">Alerta Telegram pierdere comunicatie BMS</span>
+              <button type="button" class="tgl-pill" id="bmsAlertToggle" onclick="toggleBmsAlert()">OFF</button>
+            </div>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-size:12px; font-weight:700; color:#cbd5e1;">Alerta risc inghet baterie (sub)</span>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <input type="number" id="batFreezeTemp" min="-10" max="25" value="8" onchange="saveBatFreezeTemp()" oninput="gBatFreezeDirty=true" style="width:48px; background:#0f172a; color:#38bdf8; border:1px solid #334155; border-radius:6px; padding:4px 6px; font-size:12px; font-weight:700; text-align:center;">
+                <span style="font-size:12px; color:#94a3b8; font-weight:700;">&deg;C</span>
+                <button type="button" class="tgl-pill" id="batFreezeAlertToggle" onclick="toggleBatFreezeAlert()">OFF</button>
+              </div>
+            </div>
           </div>
           <button class="btn-back" onclick="openScreen('view-main')">&lt; Inapoi</button>
         </div>
@@ -1357,6 +1367,7 @@
     let gBatSchedOn = false;
     let gBatSchedDirty = false;
     let gBmsAlertOn = false;
+    let gBatFreezeAlertOn = false, gBatFreezeDirty = false;
     let gGridAlertOn = true;
     let gBatNormA = 0;
     let gBatLiveA = null;
@@ -1410,6 +1421,15 @@
         gGridAlertOn = d.tg_grid_alert;
         const btn = document.getElementById("gridAlertToggle");
         if (btn) { btn.classList.toggle("on", gGridAlertOn); btn.innerText = gGridAlertOn ? "ON" : "OFF"; }
+      }
+      if (typeof d.tg_bat_freeze_alert === "boolean") {
+        gBatFreezeAlertOn = d.tg_bat_freeze_alert;
+        const btn = document.getElementById("batFreezeAlertToggle");
+        if (btn) { btn.classList.toggle("on", gBatFreezeAlertOn); btn.innerText = gBatFreezeAlertOn ? "ON" : "OFF"; }
+      }
+      const frzEl = document.getElementById("batFreezeTemp");
+      if (!gBatFreezeDirty && frzEl && document.activeElement !== frzEl && typeof d.bat_freeze_temp === "number") {
+        frzEl.value = d.bat_freeze_temp;
       }
       const stEl = document.getElementById("batPauseStart");
       const enEl = document.getElementById("batPauseEnd");
@@ -1477,6 +1497,28 @@
         gBmsAlertOn = next;
         const btn = document.getElementById("bmsAlertToggle");
         if (btn) { btn.classList.toggle("on", gBmsAlertOn); btn.innerText = gBmsAlertOn ? "ON" : "OFF"; }
+      }
+    }
+
+    async function toggleBatFreezeAlert() {
+      const next = !gBatFreezeAlertOn;
+      const tVal = parseInt(document.getElementById("batFreezeTemp")?.value ?? "8", 10);
+      const tClamped = isNaN(tVal) ? 8 : Math.max(-10, Math.min(25, tVal));
+      if (await postBatteryConfig({ tg_bat_freeze_alert: next, bat_freeze_temp: tClamped }, "")) {
+        gBatFreezeAlertOn = next;
+        gBatFreezeDirty = false;
+        const btn = document.getElementById("batFreezeAlertToggle");
+        if (btn) { btn.classList.toggle("on", gBatFreezeAlertOn); btn.innerText = gBatFreezeAlertOn ? "ON" : "OFF"; }
+      }
+    }
+
+    async function saveBatFreezeTemp() {
+      const el = document.getElementById("batFreezeTemp");
+      const tVal = parseInt(el?.value ?? "8", 10);
+      const tClamped = isNaN(tVal) ? 8 : Math.max(-10, Math.min(25, tVal));
+      if (el) el.value = tClamped;
+      if (await postBatteryConfig({ bat_freeze_temp: tClamped }, "")) {
+        gBatFreezeDirty = false;
       }
     }
 

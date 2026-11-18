@@ -28,6 +28,8 @@ static void load_defaults(void)
     g_settings.bat_norm_chg_a = 0;
     g_settings.tg_bms_alert_enabled = false;
     g_settings.tg_grid_alert_enabled = true;
+    g_settings.tg_bat_freeze_alert_enabled = false;
+    g_settings.bat_freeze_temp_c = 8;
 }
 
 esp_err_t app_settings_init(void)
@@ -102,6 +104,9 @@ esp_err_t app_settings_init(void)
     nvs_get_u16(nvs, "bat_norm_a", &g_settings.bat_norm_chg_a);
     if (nvs_get_u8(nvs, "tg_bms", &u8v) == ESP_OK) g_settings.tg_bms_alert_enabled = (u8v == 1);
     if (nvs_get_u8(nvs, "tg_grid", &u8v) == ESP_OK) g_settings.tg_grid_alert_enabled = (u8v == 1);
+    if (nvs_get_u8(nvs, "tg_bat_frz", &u8v) == ESP_OK) g_settings.tg_bat_freeze_alert_enabled = (u8v == 1);
+    int8_t i8v = 8;
+    if (nvs_get_i8(nvs, "bat_frz_t", &i8v) == ESP_OK) g_settings.bat_freeze_temp_c = i8v;
     if (nvs_get_u8(nvs, "inv_ph", &u8v) == ESP_OK) g_settings.inv_phases = u8v;
     nvs_get_u16(nvs, "inv_dt", &g_settings.inv_dev_type);
 
@@ -142,6 +147,8 @@ esp_err_t app_settings_save(const app_settings_t *settings)
     nvs_set_u16(nvs, "bat_norm_a", settings->bat_norm_chg_a);
     nvs_set_u8(nvs, "tg_bms", settings->tg_bms_alert_enabled ? 1 : 0);
     nvs_set_u8(nvs, "tg_grid", settings->tg_grid_alert_enabled ? 1 : 0);
+    nvs_set_u8(nvs, "tg_bat_frz", settings->tg_bat_freeze_alert_enabled ? 1 : 0);
+    nvs_set_i8(nvs, "bat_frz_t", settings->bat_freeze_temp_c);
     nvs_set_u8(nvs, "inv_ph", settings->inv_phases);
     nvs_set_u16(nvs, "inv_dt", settings->inv_dev_type);
 

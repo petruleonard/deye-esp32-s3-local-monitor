@@ -6,6 +6,7 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -123,30 +124,62 @@ void telegram_notify_check_grid(const deye_data_t *d)
     if (!g_settings.tg_bms_alert_enabled) {
         s_bms_lost_streak = 0;
         s_bms_alert_sent = false;
+    } else {
+        bool bms_lost = (d->battery_soc == 0 && (d->battery_soh == 0 || d->battery_volts < 10.0f));
+        if (bms_lost) {
+            s_bms_lost_streak++;
+            if (s_bms_lost_streak >= 6 && !s_bms_alert_sent) {
+                char msg[256];
+                snprintf(msg, sizeof(msg),
+                         "ALERTA BATERIE (BMS)! S-a pierdut comunicatia BMS cu bateria (SoC: %u%%, Tensiune: %.1f V).",
+                         (unsigned)d->battery_soc, d->battery_volts);
+                if (telegram_notify_send(msg) == ESP_OK) {
+                    s_bms_alert_sent = true;
+                }
+            }
+        } else if (d->battery_soc > 0 && d->battery_volts >= 10.0f) {
+            s_bms_lost_streak = 0;
+            if (s_bms_alert_sent) {
+                char msg[256];
+                snprintf(msg, sizeof(msg),
+                         "BATERIE OK: Comunicatia BMS cu bateria a fost restabilita (SoC: %u%%, %.1f V).",
+                         (unsigned)d->battery_soc, d->battery_volts);
+                if (telegram_notify_send(msg) == ESP_OK) {
+                    s_bms_alert_sent = false;
+                }
+            }
+        }
+    }
+
+    // Check battery low temperature / freeze risk alert (only triggers on drop, never on rise)
+    static int s_freeze_streak = 0;
+    static int s_freeze_last_alerted_c = 127;
+    if (!g_settings.tg_bat_freeze_alert_enabled) {
+        s_freeze_streak = 0;
+        s_freeze_last_alerted_c = 127;
         return;
     }
 
-    bool bms_lost = (d->battery_soc == 0 && (d->battery_soh == 0 || d->battery_volts < 10.0f));
-    if (bms_lost) {
-        s_bms_lost_streak++;
-        if (s_bms_lost_streak >= 6 && !s_bms_alert_sent) {
-            char msg[256];
-            snprintf(msg, sizeof(msg),
-                     "ALERTA BATERIE (BMS)! S-a pierdut comunicatia BMS cu bateria (SoC: %u%%, Tensiune: %.1f V).",
-                     (unsigned)d->battery_soc, d->battery_volts);
-            if (telegram_notify_send(msg) == ESP_OK) {
-                s_bms_alert_sent = true;
+    if (d->battery_volts >= 10.0f && d->battery_temp_c > -40.0f && d->battery_temp_c < 80.0f) {
+        int temp_floor = (int)floorf(d->battery_temp_c + 0.001f);
+        int thresh = (int)g_settings.bat_freeze_temp_c;
+        if (temp_floor <= thresh) {
+            s_freeze_streak++;
+            if (s_freeze_streak >= 2) {
+                if (s_freeze_last_alerted_c == 127 || temp_floor < s_freeze_last_alerted_c) {
+                    char msg[256];
+                    snprintf(msg, sizeof(msg),
+                             "ALERTA RISC INGHET BATERIE! Temperatura scazuta: %.1f C (prag setat: %d C). SoC: %u%%",
+                             d->battery_temp_c, thresh, (unsigned)d->battery_soc);
+                    if (telegram_notify_send(msg) == ESP_OK) {
+                        s_freeze_last_alerted_c = temp_floor;
+                    }
+                }
             }
-        }
-    } else if (d->battery_soc > 0 && d->battery_volts >= 10.0f) {
-        s_bms_lost_streak = 0;
-        if (s_bms_alert_sent) {
-            char msg[256];
-            snprintf(msg, sizeof(msg),
-                     "BATERIE OK: Comunicatia BMS cu bateria a fost restabilita (SoC: %u%%, %.1f V).",
-                     (unsigned)d->battery_soc, d->battery_volts);
-            if (telegram_notify_send(msg) == ESP_OK) {
-                s_bms_alert_sent = false;
+        } else {
+            s_freeze_streak = 0;
+            if (temp_floor >= thresh + 2) {
+                s_freeze_last_alerted_c = 127;
             }
         }
     }

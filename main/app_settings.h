@@ -27,6 +27,8 @@ typedef struct {
     uint16_t bat_norm_chg_a;
     bool tg_bms_alert_enabled;
     bool tg_grid_alert_enabled;
+    bool tg_bat_freeze_alert_enabled;
+    int8_t bat_freeze_temp_c;
     uint8_t inv_phases;
     uint16_t inv_dev_type;
 } app_settings_t;

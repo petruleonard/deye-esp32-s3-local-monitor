@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
@@ -13,6 +15,7 @@
 #include "deye_modbus.h"
 #include "history_store.h"
 #include "local_web_server.h"
+#include "telegram_notify.h"
 #include "wifi_manager.h"
 
 static const char *TAG = "main";
@@ -107,6 +110,7 @@ void app_main(void)
 
     bool sntp_started = false;
     int wait_wifi_ms = 0;
+    int last_ota_check_yday = -1;
     while (1) {
         if (!sntp_started && wifi_manager_is_connected()) {
             history_store_start_sntp();
@@ -123,7 +127,38 @@ void app_main(void)
             ESP_LOGW(TAG, "Wi-Fi nu s-a conectat in 15s -> pornesc automat portalul Wi-Fi Setup!");
             wifi_manager_start_ap_portal();
         }
+
+        if (sntp_started && wifi_manager_is_connected()) {
+            time_t now = 0;
+            struct tm tmi = {0};
+            time(&now);
+            localtime_r(&now, &tmi);
+            if ((tmi.tm_year + 1900) >= 2024 && tmi.tm_hour == 18 && tmi.tm_min < 5 && last_ota_check_yday != tmi.tm_yday) {
+                last_ota_check_yday = tmi.tm_yday;
+                extern void ota_daily_check_task(void *arg);
+                xTaskCreate(ota_daily_check_task, "ota_daily", 6144, NULL, 4, NULL);
+            }
+        }
+
         vTaskDelay(pdMS_TO_TICKS(2000));
         wait_wifi_ms += 2000;
     }
+}
+
+void ota_daily_check_task(void *arg)
+{
+    (void)arg;
+    char latest[32] = "";
+    char url[256] = "";
+    char notes[160] = "";
+    if (github_ota_check_latest(latest, sizeof(latest), url, sizeof(url), notes, sizeof(notes))) {
+        if (strcmp(latest, FW_VERSION) != 0) {
+            char msg[360];
+            snprintf(msg, sizeof(msg),
+                     "ACTUALIZARE DISPONIBILA (%s)!\nVersiune curenta: %s\nNoutati: %s\nDeschide Setari -> Verifica Actualizari pe GitHub pentru instalare.",
+                     latest, FW_VERSION, notes[0] ? notes : "Imbunatatiri si corectii");
+            telegram_notify_send(msg);
+        }
+    }
+    vTaskDelete(NULL);
 }
