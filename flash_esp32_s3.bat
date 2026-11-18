@@ -40,8 +40,7 @@ if "!PYTHON_EXE!"=="" (
     echo  Pasul 2: IMPORTANT - La instalare bifeaza casuta "Add python.exe to PATH"!
     echo  Pasul 3: Dupa instalare, da din nou dublu-click pe flash_esp32_s3.bat.
     echo.
-    pause
-    exit /b 1
+    goto :wait_close
 )
 
 REM Verifica daca modulul esptool este instalat; daca nu, il instaleaza automat
@@ -51,15 +50,13 @@ if errorlevel 1 (
     "!PYTHON_EXE!" -m pip install --upgrade esptool
     if errorlevel 1 (
         echo [EROARE] Nu s-a putut instala esptool. Ruleaza manual: pip install esptool
-        pause
-        exit /b 1
+        goto :wait_close
     )
 )
 
 if not exist "build\deye_esp32_s3_bridge.bin" (
     echo [EROARE] Nu am gasit build\deye_esp32_s3_bridge.bin!
-    pause
-    exit /b 1
+    goto :wait_close
 )
 
 REM 2. Detecteaza porturile COM disponibile
@@ -89,12 +86,15 @@ if errorlevel 1 (
     echo  2. Cablul USB sa fie conectat in portul USB/UART al placii ESP32-S3
     echo  3. Daca nu intra automat in boot: tine apasat BOOT, apasa scurt RST, apoi elibereaza BOOT.
     echo.
-    pause
-    exit /b 1
+    goto :wait_close
 )
 
 echo.
 echo [SUCCES] Firmware v1.3.30 incarcat cu succes pe %COM_PORT% ^(cu suport Dual-OTA Rollback^)!
 echo Conecteaza-te acum la Wi-Fi "Deye-ESP32-Setup" ^(http://192.168.4.1^) pentru configurare.
+echo Poti inchide aceasta fereastra de la butonul Close ^(X^).
 echo.
-pause
+
+:wait_close
+timeout /t 3600 /nobreak >nul
+goto :wait_close

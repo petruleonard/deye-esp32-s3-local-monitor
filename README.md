@@ -86,7 +86,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
      0x20000 build/deye_esp32_s3_bridge.bin ^
      0x320000 build/deye_esp32_s3_bridge.bin
    ```
-   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.3.30 incarcat cu succes`** până apeși o tastă.
+   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.3.30 incarcat cu succes`** până o închizi de la butonul **Close (`X`)**.
 
 #### Varianta B — Compilare din codul sursă (ESP-IDF v5.x / v6.x)
 ```bash
