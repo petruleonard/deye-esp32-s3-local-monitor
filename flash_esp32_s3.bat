@@ -79,6 +79,7 @@ echo.
 
 set /p "COM_PORT=Introdu portul COM al placutei ESP32-S3 (Enter pentru %DEFAULT_PORT%): "
 if "%COM_PORT%"=="" set "COM_PORT=%DEFAULT_PORT%"
+echo(%COM_PORT%| findstr /r "^[0-9][0-9]*$" >nul && set "COM_PORT=COM%COM_PORT%"
 
 echo.
 echo Scriu bootloader, partition table, ota_data si firmware (ota_0 + ota_1 backup rollback) pe %COM_PORT%...
