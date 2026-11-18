@@ -74,8 +74,9 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
 **Pași de încărcare (nu este nevoie să deschizi CMD):**
 1. Pe pagina GitHub a proiectului, apasă butonul verde **`<> Code`** → **`Download ZIP`**, apoi **dezarhivează** folderul pe PC (ex. pe Desktop).
 2. Conectează placa **ESP32-S3 DevKitC-1 N16R8** la PC printr-un cablu USB de date.
-3. Dă **dublu-click direct din Windows Explorer pe fișierul `flash_esp32_s3.bat`** *(sau rulează-l din `CMD` / `PowerShell` dacă preferi)*:
-   - Se deschide automat o fereastră care detectează Python, instalează `esptool` (dacă nu există deja) și afișează lista porturilor `COM` găsite pe PC.
+3. Dă **dublu-click direct din Windows Explorer pe fișierul `flash_esp32_s3.bat`**:
+   - *(Notă Windows SmartScreen: Pentru că fișierul este descărcat de pe internet, Windows poate afișa la primul dublu-click o fereastră albastră **"Windows protected your PC" / "Windows v-a protejat PC-ul"**. Apasă pe **"More info" / "Mai multe informații"** și apoi pe butonul **"Run anyway" / "Rulați oricum"**).*
+   - Se deschide automat fereastra de instalare care detectează Python, instalează `esptool` (dacă nu există deja) și afișează lista porturilor `COM` găsite pe PC.
    - Apasă direct tasta **`Enter`** pentru a folosi portul `COM` detectat automat (sau tastează portul dorit, de ex. `COM7`, și apasă `Enter`).
    - Scriptul scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.3.30` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de siguranță `ota_1` la `0x320000` pentru rollback automat):
    ```bash
