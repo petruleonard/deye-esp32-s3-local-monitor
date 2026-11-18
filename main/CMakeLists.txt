@@ -1,0 +1,32 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "app_settings.c"
+        "wifi_manager.c"
+        "logger_discovery.c"
+        "solarman_v5.c"
+        "deye_data.c"
+        "deye_modbus.c"
+        "history_store.c"
+        "local_web_server.c"
+        "telegram_notify.c"
+    INCLUDE_DIRS
+        "."
+    EMBED_TXTFILES
+        "../web/index.html"
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        esp_netif
+        esp_event
+        esp_http_server
+        esp_http_client
+        mbedtls
+        spiffs
+        lwip
+        driver
+        esp_driver_gpio
+        esp_timer
+        mdns
+        app_update
+)

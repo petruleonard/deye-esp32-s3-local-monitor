@@ -1,0 +1,2135 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#080c14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Deye Solar Monitor — Web Live</title>
+  <style>
+    :root {
+      --bg-page: #05080f;
+      --bg-card: #111622;
+      --bg-panel: #0d1320;
+      --border-subtle: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-green: #10b981;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html {
+      background: #05080f;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at top, #0f172a 0%, #05080f 70%);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Top Responsive Bar */
+    .topbar {
+      width: 100%;
+      max-width: 1040px;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #064e3b;
+      border: 1px solid #065f46;
+      box-shadow: none;
+      transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .brand-dot.connected {
+      background: #4ade80;
+      border-color: #86efac;
+      box-shadow: 0 0 10px #22c55e, 0 0 18px rgba(34, 197, 94, 0.65);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .wifi-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2.5px;
+      height: 16px;
+      margin-left: 8px;
+      cursor: default;
+    }
+
+    .wifi-bar {
+      width: 3.5px;
+      border-radius: 2px;
+      background: #14532d;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .wifi-bar.on {
+      background: #4ade80;
+      box-shadow: 0 0 6px rgba(74, 222, 128, 0.55);
+    }
+
+    .tgl-pill {
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tgl-pill.on {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: #10b981;
+      color: #34d399;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+    }
+
+    .sched-bar {
+      position: relative;
+      height: 27px;
+      border-radius: 7px;
+      background: #064e3b;
+      border: 1px solid #10b981;
+      overflow: hidden;
+      margin: 9px 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #d1fae5;
+    }
+
+    .sched-seg {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: rgba(245, 158, 11, 0.88);
+      color: #111827;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .sched-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #64748b;
+      margin-bottom: 9px;
+    }
+
+    .sched-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .sched-time {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-radius: 7px;
+      padding: 7px 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .sched-save {
+      padding: 8px 13px;
+      border-radius: 7px;
+      border: 1px solid #0284c7;
+      background: #0f293a;
+      color: #38bdf8;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .status-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .conn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      color: #cbd5e1;
+    }
+
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+    }
+    .conn-dot.online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .conn-dot.offline { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+    .mode-btn {
+      background: #132238;
+      border: 1px solid #06b6d4;
+      color: #38bdf8;
+      border-radius: 18px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .mode-btn.demo-active {
+      background: #2b1d0e;
+      border-color: #f97316;
+      color: #fb923c;
+    }
+
+    /* Quick Tab Navigation (Phone / Tablet / PC) */
+    .quick-nav {
+      width: 100%;
+      max-width: 1040px;
+      padding: 10px 16px 8px 16px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: #334155 transparent;
+    }
+    .quick-nav::-webkit-scrollbar { height: 4px; }
+    .quick-nav::-webkit-scrollbar-track { background: transparent; }
+    .quick-nav::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    .nav-chip {
+      flex-shrink: 0;
+      padding: 7px 14px;
+      border-radius: 12px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .nav-chip.active {
+      background: #0c233a;
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+
+    /* Main Responsive Layout */
+    .main-layout {
+      width: 100%;
+      max-width: 1040px;
+      padding: 8px 14px 10px 14px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    @media (min-width: 900px) {
+      .main-layout {
+        grid-template-columns: 500px 1fr;
+      }
+    }
+
+    /* Scalable 480x480 Screen Container */
+    .screen-frame {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      background: #080c14;
+      border: 2px solid #1e293b;
+      border-radius: 22px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      position: relative;
+      aspect-ratio: 1 / 1;
+    }
+
+    .scale-stage {
+      width: 480px;
+      height: 480px;
+      transform-origin: top left;
+      position: relative;
+      background: #080c14;
+      overflow: hidden;
+    }
+
+    /* View Screens inside 480x480 stage */
+    .view-screen {
+      display: none;
+      width: 480px;
+      height: 480px;
+      position: relative;
+      padding: 12px;
+      overflow-y: auto;
+    }
+    .view-screen.active { display: block; }
+    #view-main.active { padding: 0; overflow: hidden; }
+
+    body.subview-mode .main-layout {
+      grid-template-columns: 1fr;
+    }
+
+    body.subview-mode .side-panel {
+      display: none;
+    }
+
+    body.subview-mode .screen-frame {
+      aspect-ratio: auto;
+    }
+
+    body.subview-mode .scale-stage {
+      height: auto;
+      overflow: visible;
+    }
+
+    body.subview-mode .view-screen {
+      height: auto;
+      overflow-y: visible;
+    }
+
+    /* SVG Flow Canvas */
+    #flowCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 480px;
+      height: 480px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Live Cards */
+    .live-card {
+      position: absolute;
+      width: 226px;
+      height: 172px;
+      background: #111622;
+      border-radius: 16px;
+      padding: 9px 12px 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      z-index: 5;
+      transition: transform 0.14s;
+    }
+    .live-card:active { transform: scale(0.97); }
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    .mini-chart {
+      width: 100%;
+      height: 42px;
+      display: block;
+      margin-top: 2px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .live-card-pv {
+      top: 8px; left: 8px;
+      border: 2px solid #f97316;
+      box-shadow: 0 0 18px rgba(249, 115, 22, 0.25);
+    }
+    .live-card-grid {
+      top: 8px; right: 8px;
+      border: 2px solid #10b981;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.25);
+    }
+    .live-card-bat {
+      bottom: 8px; left: 8px;
+      border: 2px solid #10b981;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.25);
+    }
+    .live-card-load {
+      bottom: 8px; right: 8px;
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
+    }
+
+    .card-icon-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 62px;
+      flex-shrink: 0;
+    }
+    .card-val-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      flex-grow: 1;
+    }
+    .card-val { font-size: 22px; font-weight: 800; color: #fff; }
+    .card-sub { font-size: 12px; font-weight: 700; margin-top: 3px; }
+    .card-daily {
+      font-size: 13px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-top: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 3px 9px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
+    }
+
+    /* Central Inverter */
+    .center-inverter {
+      position: absolute;
+      top: 203px;
+      left: 197px;
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      background: #0c1929;
+      border: 3px solid #06b6d4;
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 6;
+    }
+    .center-inverter:active { transform: scale(0.94); }
+    .inv-sub-hint { font-size: 9px; color: #94a3b8; margin-top: 2px; }
+
+    /* Sub-screen styles */
+    .sub-header { text-align: center; margin-bottom: 12px; }
+    .sub-title { font-size: 17px; font-weight: 800; color: #f8fafc; margin: 0; }
+    .sub-desc { font-size: 12px; color: #38bdf8; margin-top: 3px; }
+
+    .param-box {
+      background: #0f172a;
+      border-radius: 14px;
+      border: 1.5px solid #06b6d4;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .param-box-orange { border-color: #f97316; }
+    .param-box-green { border-color: #10b981; }
+    .param-box-red { border-color: #ef4444; }
+    .box-header { font-size: 12px; font-weight: 700; color: #38bdf8; margin-bottom: 8px; }
+
+    .pill-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .pill-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pill-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .pill {
+      background: #131e2f;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      padding: 10px 6px;
+      text-align: center;
+    }
+    .pill-lbl { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 4px; }
+    .pill-val { font-size: 17px; font-weight: 800; color: #f8fafc; }
+
+    .btn-back {
+      display: block;
+      margin: 14px auto 0 auto;
+      width: 130px;
+      height: 38px;
+      border-radius: 19px;
+      background: #1a2942;
+      border: 2px solid #06b6d4;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Period Modal inside 480x480 */
+    .modal-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 6, 15, 0.85);
+      z-index: 20;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .period-modal {
+      width: 420px;
+      height: 440px;
+      background: #0a1428;
+      border: 2px solid #38bdf8;
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .tab-row {
+      width: 100%;
+      display: flex;
+      background: #0d1b36;
+      border: 1.5px solid #38bdf8;
+      border-radius: 12px;
+      padding: 3px;
+      gap: 4px;
+      margin: 8px 0 12px 0;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: #e2e8f0;
+      padding: 7px 0;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: #38bdf8; color: #050c18; }
+
+    .cal-box {
+      width: 100%;
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px;
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+    }
+    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .cal-nav-btn {
+      width: 30px; height: 26px; border: none; border-radius: 8px;
+      background: #e2e8f0; font-weight: 800; cursor: pointer;
+    }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; flex: 1; }
+    .cal-dow { font-size: 11px; font-weight: 700; color: #64748b; }
+    .cal-day {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer;
+    }
+    .cal-day.selected { border: 2px solid #0284c7; background: #e0f2fe; color: #0369a1; font-weight: 800; }
+
+    .picker-box {
+      width: 100%;
+      flex: 1;
+      background: #0d1b36;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+    }
+    .picker-row { display: flex; align-items: center; gap: 22px; }
+    .picker-arrow {
+      width: 44px; height: 40px; border-radius: 10px; background: #1e3a5f;
+      border: 1.5px solid #38bdf8; color: #fff; font-size: 18px; font-weight: 800; cursor: pointer;
+    }
+    .picker-val { font-size: 20px; font-weight: 800; min-width: 110px; text-align: center; }
+
+    /* Desktop / Tablet Side Telemetry Panel */
+    .side-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .side-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .stat-tile {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .stat-tile-lbl { font-size: 13px; font-weight: 600; color: #94a3b8; }
+    .stat-tile-val { font-size: 22px; font-weight: 800; margin-top: 4px; color: #f8fafc; }
+
+    .info-banner {
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .cfg-group { margin-bottom: 12px; text-align: left; }
+    .cfg-lbl { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px; }
+    .cfg-inp {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #f8fafc;
+      font-size: 13px;
+      outline: none;
+    }
+    .cfg-inp:focus { border-color: #38bdf8; }
+    .cfg-msg { font-size: 12px; margin-top: 8px; min-height: 18px; font-weight: 700; }
+    #settingsModal { position: fixed; inset: 0; z-index: 999; padding: 16px; }
+    .modal-card {
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      border-radius: 18px;
+      padding: 18px;
+      max-width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+    .modal-title { font-size: 16px; font-weight: 800; color: #f8fafc; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-dot" id="brandDot" title="Lipsa conexiune cu invertorul"></div>
+      <h1>Deye Solar Monitor</h1>
+      <div class="wifi-bars" id="wifiBars" title="Semnal Wi-Fi: indisponibil">
+        <span class="wifi-bar" style="height:4px"></span>
+        <span class="wifi-bar" style="height:7px"></span>
+        <span class="wifi-bar" style="height:10px"></span>
+        <span class="wifi-bar" style="height:13px"></span>
+        <span class="wifi-bar" style="height:16px"></span>
+      </div>
+    </div>
+    <div class="status-controls">
+      <button class="mode-btn" id="pwaInstallBtn" style="display:none; border-color:#10b981; color:#34d399;" onclick="installPWA()">&#128242; Instaleaza App</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-layout">
+
+    <!-- Responsive 1:1 Stage -->
+    <div class="screen-frame" id="screenFrame">
+      <div class="scale-stage" id="scaleStage">
+
+        <!-- VIEW 1: FLUX ENERGETIC LIVE -->
+        <div class="view-screen active" id="view-main">
+          <svg id="flowCanvas">
+            <path d="M 120 180 L 120 222 L 197 222" fill="none" stroke="#253346" stroke-width="2.5" stroke-linecap="round"/>
+            <path id="path-grid-base" d="M 360 180 L 360 222 L 283 222" fill="none" stroke="#253346" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M 120 300 L 120 270 L 197 270" fill="none" stroke="#253346" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M 360 300 L 360 270 L 283 270" fill="none" stroke="#253346" stroke-width="2.5" stroke-linecap="round"/>
+            <g id="flowBeams"></g>
+            <g id="gridFaultMark" style="display:none;">
+              <circle cx="326" cy="222" r="13" fill="#450a0a" stroke="#ef4444" stroke-width="2"/>
+              <path d="M 320 216 L 332 228 M 332 216 L 320 228" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+            </g>
+          </svg>
+
+          <!-- CARD 1: SOLAR PV -->
+          <div class="live-card live-card-pv" onclick="openScreen('view-solar')">
+            <div class="card-top-row">
+              <div class="card-icon-col">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2">
+                  <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                </svg>
+              </div>
+              <div class="card-val-col">
+                <div class="card-val" id="main-pv-val">--</div>
+                <div class="card-sub" style="color:#f97316;">Productie</div>
+                <div class="card-daily" id="main-pv-daily">Total: -- kWh</div>
+              </div>
+            </div>
+            <svg class="mini-chart" id="chart-pv" viewBox="0 0 200 42" preserveAspectRatio="none"></svg>
+          </div>
+
+          <!-- CARD 2: RETEA -->
+          <div class="live-card live-card-grid" id="main-grid-card" onclick="openScreen('view-grid')">
+            <div class="card-top-row">
+              <div class="card-icon-col">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fb7185" stroke-width="2">
+                  <path d="M12 2L8 22M12 2l4 20M6 8h12M5 13h14M7 18h10"/>
+                </svg>
+              </div>
+              <div class="card-val-col">
+                <div class="card-val" id="main-grid-val">--</div>
+                <div class="card-sub" id="main-grid-sub" style="color:#34d399;">Retea</div>
+                <div class="card-daily" id="main-grid-daily">-- kWh</div>
+              </div>
+            </div>
+            <svg class="mini-chart" id="chart-grid" viewBox="0 0 200 42" preserveAspectRatio="none"></svg>
+          </div>
+
+          <!-- CENTER: INVERTOR DEYE -->
+          <div class="center-inverter" onclick="openScreen('view-history')">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="8" r="2"/><path d="M8 15h8M8 18h5"/>
+            </svg>
+            <div style="font-size:11px; font-weight:800; color:#e2e8f0; margin-top:2px;">DEYE</div>
+            <div class="inv-sub-hint">Click: Istoric</div>
+          </div>
+
+          <!-- CARD 3: BATERIE (5 thick lines + dynamic SoC color) -->
+          <div class="live-card live-card-bat" id="main-bat-card" onclick="openScreen('view-battery')">
+            <div class="card-top-row">
+              <div class="card-icon-col" style="width: 62px;">
+                <svg width="56" height="26" viewBox="0 0 58 28">
+                  <rect x="2" y="2" width="48" height="24" rx="4" fill="#0c1929" stroke="#10b981" stroke-width="2.2" id="bat-frame-rect"/>
+                  <rect x="50" y="7" width="4" height="14" rx="2" fill="#10b981" id="bat-nip-rect"/>
+                  <rect x="5.5" y="5.5" width="6.5" height="17" rx="1.5" fill="#10b981" id="bat-bar-1"/>
+                  <rect x="14" y="5.5" width="6.5" height="17" rx="1.5" fill="#10b981" id="bat-bar-2"/>
+                  <rect x="22.5" y="5.5" width="6.5" height="17" rx="1.5" fill="#10b981" id="bat-bar-3"/>
+                  <rect x="31" y="5.5" width="6.5" height="17" rx="1.5" fill="#10b981" id="bat-bar-4"/>
+                  <rect x="39.5" y="5.5" width="6.5" height="17" rx="1.5" fill="#10b981" id="bat-bar-5"/>
+                </svg>
+                <div style="font-size:15px; font-weight:900; color:#10b981; margin-top:3px;" id="main-bat-soc">--%</div>
+              </div>
+              <div class="card-val-col">
+                <div class="card-val" id="main-bat-val">--</div>
+                <div class="card-sub" id="main-bat-sub" style="color:#34d399;">Standby</div>
+                <div class="card-daily" id="main-bat-daily">-- kWh</div>
+              </div>
+            </div>
+            <svg class="mini-chart" id="chart-bat" viewBox="0 0 200 42" preserveAspectRatio="none"></svg>
+          </div>
+
+          <!-- CARD 4: CONSUM CASA -->
+          <div class="live-card live-card-load" onclick="openScreen('view-load')">
+            <div class="card-top-row">
+              <div class="card-icon-col">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </div>
+              <div class="card-val-col">
+                <div class="card-val" id="main-load-val">--</div>
+                <div class="card-sub" style="color:#38bdf8;">Consum casa</div>
+                <div class="card-daily" id="main-load-daily">Consum: -- kWh</div>
+              </div>
+            </div>
+            <svg class="mini-chart" id="chart-load" viewBox="0 0 200 42" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <!-- VIEW 2: SOLAR -->
+        <div class="view-screen" id="view-solar">
+          <div class="sub-header">
+            <h3 class="sub-title">Parametrii Panouri Solare</h3>
+            <div class="sub-desc">Monitorizare MPPT 1 - MPPT 4</div>
+          </div>
+          <div class="param-box">
+            <div class="box-header">PRODUCTIE PANOURI</div>
+            <div class="pill-grid">
+              <div class="pill"><div class="pill-lbl">MPPT 1:</div><div class="pill-val" style="color:#34d399;" id="spv-m1-w">--</div></div>
+              <div class="pill"><div class="pill-lbl">MPPT 2:</div><div class="pill-val" style="color:#34d399;" id="spv-m2-w">--</div></div>
+              <div class="pill"><div class="pill-lbl">MPPT 3:</div><div class="pill-val" style="color:#34d399;" id="spv-m3-w">0 W</div></div>
+              <div class="pill"><div class="pill-lbl">MPPT 4:</div><div class="pill-val" style="color:#34d399;" id="spv-m4-w">0 W</div></div>
+            </div>
+          </div>
+          <div class="param-box">
+            <div class="box-header">TENSIUNI MPPT</div>
+            <div class="pill-grid">
+              <div class="pill"><div class="pill-lbl">MPPT 1:</div><div class="pill-val" id="spv-m1-v">--</div></div>
+              <div class="pill"><div class="pill-lbl">MPPT 2:</div><div class="pill-val" id="spv-m2-v">--</div></div>
+              <div class="pill"><div class="pill-lbl">MPPT 3:</div><div class="pill-val" style="color:#64748b;">---</div></div>
+              <div class="pill"><div class="pill-lbl">MPPT 4:</div><div class="pill-val" style="color:#64748b;">---</div></div>
+            </div>
+          </div>
+          <button class="btn-back" onclick="openScreen('view-main')">&lt; Inapoi</button>
+        </div>
+
+        <!-- VIEW 3: RETEA -->
+        <div class="view-screen" id="view-grid">
+          <div class="sub-header">
+            <h3 class="sub-title">Parametrii Retea</h3>
+            <div class="sub-desc" style="color:#fb7185;">Monitorizare Alimentare si Stabilitate</div>
+          </div>
+          <div class="param-box param-box-red">
+            <div class="box-header" style="color:#fb7185;">TENSIUNI &amp; PUTERI PE FAZE</div>
+            <div class="pill-grid-3">
+              <div class="pill"><div class="pill-lbl">Tensiune:</div><div class="pill-val" id="sg-v1">L1: --</div></div>
+              <div class="pill"><div class="pill-lbl">Tensiune:</div><div class="pill-val" id="sg-v2">L2: --</div></div>
+              <div class="pill"><div class="pill-lbl">Tensiune:</div><div class="pill-val" id="sg-v3">L3: --</div></div>
+              <div class="pill"><div class="pill-lbl">Putere:</div><div class="pill-val" id="sg-w1">L1: --</div></div>
+              <div class="pill"><div class="pill-lbl">Putere:</div><div class="pill-val" id="sg-w2">L2: --</div></div>
+              <div class="pill"><div class="pill-lbl">Putere:</div><div class="pill-val" id="sg-w3">L3: --</div></div>
+            </div>
+          </div>
+          <div class="param-box param-box-orange">
+            <div class="box-header" style="color:#fb923c;">ISTORIC INTRERUPERI</div>
+            <div class="pill-grid-3">
+              <div class="pill"><div class="pill-lbl">Ultimele 7 Zile:</div><div class="pill-val" style="color:#34d399;" id="sg-o7">0</div></div>
+              <div class="pill"><div class="pill-lbl">Ultimele 14 Zile:</div><div class="pill-val" style="color:#fbbf24;" id="sg-o14">0</div></div>
+              <div class="pill"><div class="pill-lbl">Ultimele 30 Zile:</div><div class="pill-val" style="color:#fb7185;" id="sg-o30">0</div></div>
+            </div>
+          </div>
+          <div class="param-box" style="padding:14px 12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12.5px; font-weight:700; color:#cbd5e1;">Alerta Telegram lipsa tensiune retea</span>
+            <button type="button" class="tgl-pill on" id="gridAlertToggle" onclick="toggleGridAlert()">ON</button>
+          </div>
+          <button class="btn-back" onclick="openScreen('view-main')">&lt; Inapoi</button>
+        </div>
+
+        <!-- VIEW 4: BATERIE -->
+        <div class="view-screen" id="view-battery">
+          <div class="sub-header">
+            <h3 class="sub-title">Parametrii &amp; Stare Baterie</h3>
+            <div class="sub-desc" style="color:#34d399;">Sistem Stocare &amp; Monitorizare BMS</div>
+          </div>
+          <div class="param-box param-box-green">
+            <div class="box-header" style="color:#34d399;">STARE &amp; STOCARE (BMS)</div>
+            <div class="pill-grid">
+              <div class="pill"><div class="pill-lbl">Nivel SoC:</div><div class="pill-val" style="color:#34d399;" id="sb-soc">--%</div></div>
+              <div class="pill"><div class="pill-lbl">Tensiune:</div><div class="pill-val" id="sb-v">-- V</div></div>
+              <div class="pill"><div class="pill-lbl">Curent:</div><div class="pill-val" id="sb-a">-- A</div></div>
+              <div class="pill"><div class="pill-lbl">Capacitate:</div><div class="pill-val" id="sb-cap">-- kWh</div></div>
+            </div>
+          </div>
+          <div class="param-box">
+            <div class="box-header">PERFORMANTA &amp; SANATATE</div>
+            <div class="pill-grid">
+              <div class="pill"><div class="pill-lbl">Putere:</div><div class="pill-val" id="sb-pwr">-- W</div></div>
+              <div class="pill"><div class="pill-lbl">Temp. BMS:</div><div class="pill-val" id="sb-temp">-- &deg;C</div></div>
+              <div class="pill"><div class="pill-lbl">Sanatate:</div><div class="pill-val" style="color:#34d399;" id="sb-soh">--%</div></div>
+              <div class="pill"><div class="pill-lbl">Status:</div><div class="pill-val" style="color:#34d399;">Normal</div></div>
+            </div>
+          </div>
+          <div class="param-box" style="padding:14px 12px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div class="box-header" style="margin:0; font-size:12px;">PROGRAM INCARCARE (MOD VARA)</div>
+              <button type="button" class="tgl-pill" id="batSchedToggle" onclick="toggleBatSched()">OFF</button>
+            </div>
+            <div class="sched-bar" id="batSchedBar">
+              <span id="batNormLabel" style="position:relative; z-index:1;">Incarcare normala</span>
+            </div>
+            <div class="sched-ticks"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+            <div class="sched-row">
+              <span>Pauza 0A:</span>
+              <input type="time" class="sched-time" id="batPauseStart" value="06:00" oninput="gBatSchedDirty=true;renderBatSchedBar()" onchange="gBatSchedDirty=true;renderBatSchedBar()">
+              <span>&rarr;</span>
+              <input type="time" class="sched-time" id="batPauseEnd" value="11:00" oninput="gBatSchedDirty=true;renderBatSchedBar()" onchange="gBatSchedDirty=true;renderBatSchedBar()">
+              <button type="button" class="sched-save" onclick="saveBatSched()">Salveaza</button>
+            </div>
+            <div id="batSchedMsg" style="font-size:11px; margin-top:5px; color:#94a3b8;"></div>
+          </div>
+          <div class="param-box" style="padding:14px 12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12.5px; font-weight:700; color:#cbd5e1;">Alerta Telegram pierdere comunicatie BMS</span>
+            <button type="button" class="tgl-pill" id="bmsAlertToggle" onclick="toggleBmsAlert()">OFF</button>
+          </div>
+          <button class="btn-back" onclick="openScreen('view-main')">&lt; Inapoi</button>
+        </div>
+
+        <!-- VIEW 5: CONSUM CASA -->
+        <div class="view-screen" id="view-load">
+          <div class="sub-header">
+            <h3 class="sub-title">Analiza Consum Casa</h3>
+            <div class="sub-desc">Monitorizare Consumatori &amp; Alimentare</div>
+          </div>
+          <div class="param-box">
+            <div class="box-header">PARAMETRII ALIMENTARE CASA</div>
+            <div class="pill-grid">
+              <div class="pill"><div class="pill-lbl">Consum:</div><div class="pill-val" style="color:#38bdf8;" id="sl-pwr">--</div></div>
+              <div class="pill"><div class="pill-lbl">Tensiune L1:</div><div class="pill-val" id="sl-v">--</div></div>
+              <div class="pill"><div class="pill-lbl">Frecventa:</div><div class="pill-val" id="sl-hz">--</div></div>
+              <div class="pill"><div class="pill-lbl">Factor P.:</div><div class="pill-val" id="sl-pf">--</div></div>
+            </div>
+          </div>
+          <div class="param-box param-box-orange">
+            <div class="box-header" style="color:#fb923c;">STATISTICI &amp; SURSA CONSUM</div>
+            <div class="pill-grid">
+              <div class="pill"><div class="pill-lbl">Total Azi:</div><div class="pill-val" id="sl-tot">--</div></div>
+              <div class="pill"><div class="pill-lbl">Varf Azi:</div><div class="pill-val" id="sl-peak">--</div></div>
+              <div class="pill"><div class="pill-lbl">Mediu Orar:</div><div class="pill-val" id="sl-avg">--</div></div>
+              <div class="pill"><div class="pill-lbl">Sursa:</div><div class="pill-val" style="color:#34d399;" id="sl-src">--</div></div>
+            </div>
+          </div>
+          <button class="btn-back" onclick="openScreen('view-main')">&lt; Inapoi</button>
+        </div>
+
+        <!-- VIEW 6: ISTORIC -->
+        <div class="view-screen" id="view-history">
+          <div class="sub-header">
+            <h3 class="sub-title">Istoric Platforma Deye</h3>
+            <div style="margin-top:6px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+              <button onclick="openPeriodModal()" style="background:#0f172a; border:1.5px solid #06b6d4; color:#38bdf8; border-radius:10px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer;" id="histPeriodBtn">
+                Perioada: Azi &#9662;
+              </button>
+              <button id="btnClearHistory" onclick="clearHistory()" style="background:#1f1218; border:1.5px solid #ef4444; color:#fca5a5; border-radius:10px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer;">
+                &#128465; Sterge Istoric
+              </button>
+            </div>
+          </div>
+          <div class="param-box">
+            <div class="box-header">BILANT ENERGETIC SELECTAT</div>
+            <div class="pill-grid-2">
+              <div class="pill"><div class="pill-lbl">Productie Solara:</div><div class="pill-val" style="color:#f97316;" id="h-pv">-- kWh</div></div>
+              <div class="pill"><div class="pill-lbl">Consum Casa:</div><div class="pill-val" style="color:#38bdf8;" id="h-load">-- kWh</div></div>
+              <div class="pill"><div class="pill-lbl">Import Retea:</div><div class="pill-val" style="color:#fb7185;" id="h-buy">-- kWh</div></div>
+              <div class="pill"><div class="pill-lbl">Export Retea:</div><div class="pill-val" style="color:#34d399;" id="h-sell">-- kWh</div></div>
+              <div class="pill"><div class="pill-lbl">Incarcare Baterie:</div><div class="pill-val" style="color:#34d399;" id="h-chg">-- kWh</div></div>
+              <div class="pill"><div class="pill-lbl">Descarcare Baterie:</div><div class="pill-val" style="color:#fbbf24;" id="h-dis">-- kWh</div></div>
+            </div>
+          </div>
+          <button class="btn-back" onclick="openScreen('view-main')">&lt; Inapoi</button>
+        </div>
+
+        <!-- MODAL: SELECTIE PERIOADA / CALENDAR -->
+        <div class="modal-overlay" id="periodModal">
+          <div class="period-modal">
+            <div style="font-size:16px; font-weight:800; color:#f8fafc;">Selecteaza Perioada / Data</div>
+            <div class="tab-row">
+              <button class="tab-btn active" onclick="switchPeriodTab('Ziua', this)">Ziua</button>
+              <button class="tab-btn" onclick="switchPeriodTab('Luna', this)">Luna</button>
+              <button class="tab-btn" onclick="switchPeriodTab('Anul', this)">Anul</button>
+              <button class="tab-btn" onclick="switchPeriodTab('Total', this)">Total</button>
+            </div>
+
+            <div class="cal-box" id="tab-ziua">
+              <div class="cal-header">
+                <button class="cal-nav-btn" onclick="prevMonth()">&lt;</button>
+                <div style="font-weight:800; font-size:13px;" id="cal-month-year">--</div>
+                <button class="cal-nav-btn" onclick="nextMonth()">&gt;</button>
+              </div>
+              <div class="cal-grid" id="cal-grid"></div>
+            </div>
+
+            <div class="picker-box" id="tab-luna">
+              <div class="picker-row">
+                <button class="picker-arrow" onclick="prevMonthPick()">&lt;</button>
+                <div class="picker-val" id="month-pick-text">--</div>
+                <button class="picker-arrow" onclick="nextMonthPick()">&gt;</button>
+              </div>
+              <button onclick="applyPeriod('month')" style="padding:9px 22px; border-radius:10px; border:none; background:#38bdf8; color:#050c18; font-weight:800; cursor:pointer;">Afiseaza Raport</button>
+            </div>
+
+            <div class="picker-box" id="tab-anul">
+              <div class="picker-row">
+                <button class="picker-arrow" onclick="prevYearPick()">&lt;</button>
+                <div class="picker-val" id="year-pick-text">2026</div>
+                <button class="picker-arrow" onclick="nextYearPick()">&gt;</button>
+              </div>
+              <button onclick="applyPeriod('year')" style="padding:9px 22px; border-radius:10px; border:none; background:#38bdf8; color:#050c18; font-weight:800; cursor:pointer;">Afiseaza Raport</button>
+            </div>
+
+            <div class="picker-box" id="tab-total">
+              <div style="font-size:13px; color:#94a3b8; text-align:center;">Cumul energetic de la instalare</div>
+              <button onclick="applyPeriod('total')" style="padding:10px 24px; border-radius:10px; border:none; background:#10b981; color:#050c18; font-weight:800; cursor:pointer;">Afiseaza Total Istoric</button>
+            </div>
+
+            <button onclick="closePeriodModal()" style="margin-top:10px; padding:7px 20px; border-radius:10px; border:1px solid #38bdf8; background:#1e3a5f; color:#fff; font-weight:700; cursor:pointer;">Inchide</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Side Summary Panel (for Tablet / PC Monitor) -->
+    <div class="side-panel">
+      <div class="side-title">Telemetrie &amp; Stare Sistem</div>
+
+      <div class="stat-row">
+        <div class="stat-tile">
+          <div class="stat-tile-lbl">Temperatura Invertor</div>
+          <div class="stat-tile-val" id="side-temp">-- &deg;C</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-lbl">Temperatura Baterie</div>
+          <div class="stat-tile-val" id="side-bat-temp">-- &deg;C</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-lbl">Productie</div>
+          <div class="stat-tile-val" style="color:#f97316;" id="side-pv-today">-- kWh</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-lbl">Consum</div>
+          <div class="stat-tile-val" style="color:#38bdf8;" id="side-load-today">-- kWh</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-lbl">Import</div>
+          <div class="stat-tile-val" style="color:#ef4444;" id="side-grid-buy-today">-- kWh</div>
+        </div>
+        <div class="stat-tile">
+          <div class="stat-tile-lbl">Export</div>
+          <div class="stat-tile-val" style="color:#10b981;" id="side-grid-sell-today">-- kWh</div>
+        </div>
+      </div>
+
+      <button id="btnOpenSettings" class="apply-btn" style="margin-top:4px; padding:14px 20px; border-radius:14px; font-size:15px; font-weight:800; letter-spacing:0.3px; background:linear-gradient(135deg,#0f2942 0%,#163a5f 100%); color:#38bdf8; border:1.5px solid #06b6d4; box-shadow:0 4px 16px rgba(6,182,212,0.18); display:flex; align-items:center; justify-content:center; gap:8px;" onclick="openSettingsModal()">&#9881; Setari Sistem &amp; Logger</button>
+    </div>
+
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card" style="width: 390px;">
+      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>&#9881; Setari Sistem &amp; ESP32-S3</span>
+        <button class="back-btn" style="padding:4px 10px; font-size:12px;" onclick="closeSettingsModal()">Inchide</button>
+      </div>
+
+      <div class="cfg-group">
+        <button class="apply-btn" id="btnScanInverter" style="margin-top:0; margin-bottom:6px; background:#0f293a; color:#38bdf8; border:1px solid #0284c7;" onclick="scanInverters()">&#128269; Scaneaza Invertor Deye pe retea</button>
+        <div id="selectedInverterInfo" style="font-size:11px; color:#94a3b8; margin-bottom:4px;"></div>
+        <div id="scanResults" style="display:none; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:8px; font-size:12px;"></div>
+      </div>
+      <input type="hidden" id="cfg-logger-mac">
+      <input type="hidden" id="cfg-logger-ip">
+      <input type="hidden" id="cfg-logger-sn">
+      <div class="cfg-group">
+        <label class="cfg-lbl">Interval Citire ESP32-S3 (secunde, minim 5s)</label>
+        <input class="cfg-inp" type="number" id="cfg-interval" min="5" max="60" step="1" placeholder="5">
+      </div>
+      <div class="cfg-group">
+        <label class="cfg-lbl">Telegram Bot Token (de la @BotFather)</label>
+        <input class="cfg-inp" type="text" id="cfg-tg-token" placeholder="ex: 123456789:ABCdef...">
+      </div>
+      <div class="cfg-group">
+        <label class="cfg-lbl">Telegram Chat ID (de la @userinfobot)</label>
+        <input class="cfg-inp" type="text" id="cfg-tg-chat" placeholder="ex: 987654321">
+      </div>
+
+      <div class="info-banner" style="font-size:11px; padding:9px; margin-bottom:10px;">
+        <b>Portal Wi-Fi ESP32-S3:</b> Pentru a schimba reteaua Wi-Fi, deschide <a href="/setup" style="color:#38bdf8;">http://deye.local/setup</a> (sau tine apasat butonul <b>BOOT</b> 3 secunde si conecteaza-te la <b>Deye-ESP32-Setup</b> / <code>192.168.4.1</code>).
+      </div>
+
+      <button class="apply-btn" style="margin-top:4px;" onclick="saveSettings()">Salveaza Setarile</button>
+      <button class="apply-btn" style="margin-top:6px; background:#0f293a; color:#38bdf8; border:1px solid #0284c7;" onclick="testTelegram()">Testeaza Notificare Telegram</button>
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid #334155;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <label class="cfg-lbl" style="margin:0;">Actualizare Firmware prin Wi-Fi (OTA .bin)</label>
+          <span id="fwVersionBadge" style="font-size:11px; color:#38bdf8; font-weight:700;"></span>
+        </div>
+        <input class="cfg-inp" type="file" id="otaFile" accept=".bin" style="padding:6px; font-size:12px;">
+        <button class="apply-btn" id="btnOtaUpload" style="margin-top:6px; background:#1e1b4b; color:#c4b5fd; border:1px solid #7c3aed;" onclick="uploadOTA()">Incarca Firmware (.bin)</button>
+        <div id="ota-progress-wrap" style="display:none; margin-top:8px; background:#0f172a; border:1px solid #334155; border-radius:6px; height:8px; overflow:hidden;">
+          <div id="ota-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg,#7c3aed,#38bdf8); transition:width 0.25s;"></div>
+        </div>
+      </div>
+      <div class="cfg-msg" id="cfg-status-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    // Responsive 480x480 stage scaling
+    function resizeStage() {
+      const frame = document.getElementById("screenFrame");
+      const stage = document.getElementById("scaleStage");
+      if (!frame || !stage) return;
+      const scale = frame.clientWidth / 480.0;
+      stage.style.transform = `scale(${scale})`;
+      if (document.body.classList.contains("subview-mode")) {
+        const active = stage.querySelector(".view-screen.active");
+        const h = active ? active.scrollHeight : 480;
+        stage.style.height = h + "px";
+        frame.style.height = (Math.ceil(h * scale) + 4) + "px";
+      } else {
+        stage.style.height = "480px";
+        frame.style.height = (Math.ceil(480 * scale) + 4) + "px";
+      }
+    }
+    window.addEventListener("resize", resizeStage);
+    window.addEventListener("DOMContentLoaded", () => {
+      resizeStage();
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => {
+          if (document.body.classList.contains("subview-mode")) resizeStage();
+        });
+        document.querySelectorAll(".view-screen").forEach(v => ro.observe(v));
+      }
+      const qn = document.getElementById("quickNav");
+      if (qn) {
+        qn.addEventListener("wheel", (e) => {
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            e.preventDefault();
+            qn.scrollLeft += e.deltaY;
+          }
+        }, { passive: false });
+      }
+    });
+    resizeStage();
+
+    // Navigation + Android back-swipe (History API + touch swipe)
+    let gCurrentView = "view-main";
+    function openScreen(id, fromPopState) {
+      document.querySelectorAll(".view-screen").forEach(v => v.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      document.body.classList.toggle("subview-mode", id !== "view-main");
+      document.querySelectorAll(".nav-chip").forEach(c => {
+        c.classList.toggle("active", c.dataset.view === id);
+      });
+      if (!fromPopState) {
+        if (id !== "view-main") {
+          if (gCurrentView === "view-main") {
+            try { history.pushState({ subview: id }, ""); } catch (_) {}
+          } else {
+            try { history.replaceState({ subview: id }, ""); } catch (_) {}
+          }
+        } else if (gCurrentView !== "view-main" && history.state && history.state.subview) {
+          gCurrentView = "view-main";
+          resizeStage();
+          try { history.back(); } catch (_) {}
+          return;
+        }
+      }
+      gCurrentView = id;
+      resizeStage();
+      if (id === "view-history") loadHistory("day", formatToday());
+    }
+
+    window.addEventListener("popstate", () => {
+      if (gCurrentView !== "view-main") {
+        openScreen("view-main", true);
+      }
+    });
+
+    let touchStartX = 0, touchStartY = 0, touchStartScrollY = 0;
+    document.addEventListener("touchstart", (e) => {
+      if (e.touches && e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      }
+    }, { passive: true });
+    document.addEventListener("touchend", (e) => {
+      if (!e.changedTouches || !e.changedTouches.length) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (gCurrentView !== "view-main" && Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.8) {
+        openScreen("view-main");
+        return;
+      }
+      const modalOpen = document.querySelector(".modal-overlay.open");
+      const curScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      if (!modalOpen && touchStartScrollY <= 2 && curScrollY <= 2 && dy > 95 && dy > Math.abs(dx) * 1.8) {
+        location.reload();
+      }
+    }, { passive: true });
+
+    // State
+    let currentData = {
+      pv_power_w: 0, pv1_power_w: 0, pv2_power_w: 0, pv1_volts: 0, pv2_volts: 0, pv_today_kwh: 0,
+      grid_power_w: 0, grid_volts: 0, grid_l2_volts: 0, grid_l3_volts: 0,
+      grid_l1_power_w: 0, grid_l2_power_w: 0, grid_l3_power_w: 0, grid_hz: 0,
+      grid_buy_today_kwh: 0, grid_sell_today_kwh: 0, grid_outages_7d: 0, grid_outages_14d: 0, grid_outages_30d: 0,
+      battery_power_w: 0, battery_soc: 0, battery_soh: 0, battery_volts: 0, battery_current: 0,
+      battery_temp_c: 0, battery_capacity_kwh: 0, battery_charge_today_kwh: 0, battery_discharge_today_kwh: 0,
+      load_power_w: 0, load_today_kwh: 0, load_peak_today_kw: 0, load_avg_hourly_kw: 0, load_pf: 0,
+      load_source_str: "-", inverter_temp_c: 0
+    };
+
+    function fmtW(w) {
+      const abs = Math.abs(w);
+      return abs >= 1000 ? (abs / 1000).toFixed(2) + " kW" : Math.round(abs) + " W";
+    }
+
+    function applyTelemetryToUI(d) {
+      currentData = d;
+
+      // 1. Solar
+      document.getElementById("main-pv-val").innerText = fmtW(d.pv_power_w);
+      document.getElementById("main-pv-daily").innerText = `Total: ${(d.pv_today_kwh || 0).toFixed(1)} kWh`;
+      document.getElementById("spv-m1-w").innerText = fmtW(d.pv1_power_w || 0);
+      document.getElementById("spv-m2-w").innerText = fmtW(d.pv2_power_w || 0);
+      document.getElementById("spv-m1-v").innerText = (d.pv1_volts || 0).toFixed(1) + " V";
+      document.getElementById("spv-m2-v").innerText = (d.pv2_volts || 0).toFixed(1) + " V";
+
+      // 2. Grid
+      const gCard = document.getElementById("main-grid-card");
+      const gSub = document.getElementById("main-grid-sub");
+      const gFault = document.getElementById("gridFaultMark");
+      const gPath = document.getElementById("path-grid-base");
+      const gW = d.grid_power_w || 0;
+      const gridDown = (d.logger_connected === true) && ((d.grid_volts || 0) < 50);
+      document.getElementById("main-grid-val").innerText = ((!gridDown && gW > 50) ? "-" : "") + fmtW(gW);
+      if (gridDown) {
+        gFault.style.display = "block";
+        gPath.setAttribute("stroke", "#ef4444");
+        gPath.setAttribute("stroke-dasharray", "5 4");
+        gSub.innerText = "AVARIE: Lipsa Retea";
+        gSub.style.color = "#ef4444";
+        gCard.style.borderColor = "#ef4444";
+        document.getElementById("main-grid-daily").innerText = `Tensiune L1: ${(d.grid_volts || 0).toFixed(0)} V`;
+      } else {
+        gFault.style.display = "none";
+        gPath.setAttribute("stroke", "#253346");
+        gPath.removeAttribute("stroke-dasharray");
+        if (gW < -50) {
+          gSub.innerText = "Export in Retea";
+          gSub.style.color = "#34d399";
+          gCard.style.borderColor = "#10b981";
+          document.getElementById("main-grid-daily").innerText = `Export: ${(d.grid_sell_today_kwh || 0).toFixed(1)} kWh`;
+        } else if (gW > 50) {
+          gSub.innerText = "Import din Retea";
+          gSub.style.color = "#fb7185";
+          gCard.style.borderColor = "#f43f5e";
+          document.getElementById("main-grid-daily").innerText = `Import: ${(d.grid_buy_today_kwh || 0).toFixed(1)} kWh`;
+        } else {
+          gSub.innerText = "Echilibrat";
+          gSub.style.color = "#94a3b8";
+          gCard.style.borderColor = "#334155";
+          document.getElementById("main-grid-daily").innerText = `Import: ${(d.grid_buy_today_kwh || 0).toFixed(1)} kWh`;
+        }
+      }
+      const is1F = (d.inv_phases === 1);
+      document.getElementById("sg-v1").innerText = `L1: ${(d.grid_volts || 0).toFixed(1)} V`;
+      document.getElementById("sg-v2").innerText = is1F ? "L2: ---" : `L2: ${(d.grid_l2_volts || 0).toFixed(1)} V`;
+      document.getElementById("sg-v3").innerText = is1F ? "L3: ---" : `L3: ${(d.grid_l3_volts || 0).toFixed(1)} V`;
+      document.getElementById("sg-w1").innerText = `L1: ${d.grid_l1_power_w || 0} W`;
+      document.getElementById("sg-w2").innerText = is1F ? "L2: ---" : `L2: ${d.grid_l2_power_w || 0} W`;
+      document.getElementById("sg-w3").innerText = is1F ? "L3: ---" : `L3: ${d.grid_l3_power_w || 0} W`;
+      document.getElementById("sg-o7").innerText = d.grid_outages_7d || 0;
+      document.getElementById("sg-o14").innerText = d.grid_outages_14d || 0;
+      document.getElementById("sg-o30").innerText = d.grid_outages_30d || 0;
+
+      // 3. Battery (5-bar SoC + dynamic color)
+      const soc = Math.max(0, Math.min(100, d.battery_soc || 0));
+      const bW = d.battery_power_w || 0;
+      document.getElementById("main-bat-soc").innerText = soc + "%";
+      document.getElementById("main-bat-val").innerText = (bW < -50 ? "-" : "") + fmtW(bW);
+      if (bW > 50) {
+        document.getElementById("main-bat-sub").innerText = "Incarcare";
+        document.getElementById("main-bat-sub").style.color = "#34d399";
+        document.getElementById("main-bat-daily").innerText = `Incarcat: ${(d.battery_charge_today_kwh || 0).toFixed(1)} kWh`;
+      } else if (bW < -50) {
+        document.getElementById("main-bat-sub").innerText = "Descarcare";
+        document.getElementById("main-bat-sub").style.color = "#fbbf24";
+        document.getElementById("main-bat-daily").innerText = `Descarcat: ${(d.battery_discharge_today_kwh || 0).toFixed(1)} kWh`;
+      } else {
+        document.getElementById("main-bat-sub").innerText = "Standby";
+        document.getElementById("main-bat-sub").style.color = "#94a3b8";
+        document.getElementById("main-bat-daily").innerText = `Incarcat: ${(d.battery_charge_today_kwh || 0).toFixed(1)} kWh`;
+      }
+
+      let batColor = "#10b981";
+      if (soc >= 80) batColor = "#10b981";
+      else if (soc >= 40) batColor = "#f97316";
+      else batColor = "#ef4444";
+
+      let activeBars = soc <= 0 ? 0 : Math.min(5, Math.ceil(soc / 20.0));
+      for (let i = 1; i <= 5; i++) {
+        const b = document.getElementById("bat-bar-" + i);
+        if (i <= activeBars) {
+          b.setAttribute("fill", batColor);
+          b.setAttribute("opacity", "1");
+        } else {
+          b.setAttribute("fill", "#1e293b");
+          b.setAttribute("opacity", "0.22");
+        }
+      }
+      document.getElementById("bat-frame-rect").setAttribute("stroke", batColor);
+      document.getElementById("bat-nip-rect").setAttribute("fill", batColor);
+      document.getElementById("main-bat-soc").style.color = batColor;
+      document.getElementById("main-bat-card").style.borderColor = batColor;
+
+      document.getElementById("sb-soc").innerText = soc + "%";
+      document.getElementById("sb-v").innerText = (d.battery_volts || 0).toFixed(1) + " V";
+      document.getElementById("sb-a").innerText = (d.battery_current || 0).toFixed(1) + " A";
+      document.getElementById("sb-cap").innerText = (d.battery_capacity_kwh || 0).toFixed(0) + " kWh";
+      document.getElementById("sb-pwr").innerText = fmtW(bW);
+      document.getElementById("sb-temp").innerText = (d.battery_temp_c || 0).toFixed(1) + " °C";
+      document.getElementById("sb-soh").innerText = (d.battery_soh || 0) + "%";
+      syncBatteryControlsFromTelemetry(d);
+
+      // 4. Load
+      document.getElementById("main-load-val").innerText = fmtW(d.load_power_w || 0);
+      document.getElementById("main-load-daily").innerText = `Consum: ${(d.load_today_kwh || 0).toFixed(1)} kWh`;
+      document.getElementById("sl-pwr").innerText = fmtW(d.load_power_w || 0);
+      document.getElementById("sl-v").innerText = (d.grid_volts || 0).toFixed(0) + " V";
+      document.getElementById("sl-hz").innerText = (d.grid_hz || 0).toFixed(1) + " Hz";
+      document.getElementById("sl-pf").innerText = (d.load_pf || 0).toFixed(2) + " PF";
+      document.getElementById("sl-tot").innerText = (d.load_today_kwh || 0).toFixed(1) + " kWh";
+      document.getElementById("sl-peak").innerText = (d.load_peak_today_kw || 0).toFixed(1) + " kW";
+      document.getElementById("sl-avg").innerText = (d.load_avg_hourly_kw || 0).toFixed(2) + " kW";
+      document.getElementById("sl-src").innerText = d.load_source_str || "-";
+
+      // Side Panel
+      document.getElementById("side-temp").innerText = (d.inverter_temp_c || 0).toFixed(1) + " °C";
+      document.getElementById("side-bat-temp").innerText = (d.battery_temp_c || 0).toFixed(1) + " °C";
+      document.getElementById("side-pv-today").innerText = (d.pv_today_kwh || 0).toFixed(1) + " kWh";
+      document.getElementById("side-load-today").innerText = (d.load_today_kwh || 0).toFixed(1) + " kWh";
+      document.getElementById("side-grid-buy-today").innerText = (d.grid_buy_today_kwh || 0).toFixed(1) + " kWh";
+      document.getElementById("side-grid-sell-today").innerText = (d.grid_sell_today_kwh || 0).toFixed(1) + " kWh";
+    }
+
+    let gPinRequired = false;
+
+    function updatePinLockUI(lockedSec) {
+      const allowed = !(lockedSec > 0);
+      for (const id of ["btnClearHistory", "btnOpenSettings"]) {
+        const btn = document.getElementById(id);
+        if (!btn) continue;
+        btn.disabled = !allowed;
+        btn.style.opacity = allowed ? "1" : "0.35";
+        btn.style.cursor = allowed ? "pointer" : "not-allowed";
+        btn.title = lockedSec > 0 ? `Blocat ${Math.max(1, Math.ceil(lockedSec / 60))} min din cauza unui PIN gresit` : "";
+      }
+    }
+
+    function minToHHMM(m) {
+      const hh = String(Math.floor((m || 0) / 60)).padStart(2, "0");
+      const mm = String((m || 0) % 60).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+
+    function hhmmToMin(s, defVal) {
+      if (!s || !s.includes(":")) return defVal;
+      const [h, m] = s.split(":").map(Number);
+      return Math.max(0, Math.min(1439, (h || 0) * 60 + (m || 0)));
+    }
+
+    let gBatSchedOn = false;
+    let gBatSchedDirty = false;
+    let gBmsAlertOn = false;
+    let gGridAlertOn = true;
+    let gBatNormA = 0;
+    let gBatLiveA = null;
+
+    function renderBatSchedBar() {
+      const bar = document.getElementById("batSchedBar");
+      const lbl = document.getElementById("batNormLabel");
+      if (!bar || !lbl) return;
+      bar.querySelectorAll(".sched-seg").forEach(el => el.remove());
+      const normTxt = gBatNormA > 0 ? `${gBatNormA} A` : "Normal";
+      if (!gBatSchedOn) {
+        bar.style.background = "#1e293b";
+        bar.style.borderColor = "#334155";
+        lbl.innerText = `Mod Vara oprit (Invertor: ${normTxt})`;
+        return;
+      }
+      bar.style.background = "#064e3b";
+      bar.style.borderColor = "#10b981";
+      lbl.innerText = `Verde: ${normTxt} | Galben: 0 A`;
+      const st = hhmmToMin(document.getElementById("batPauseStart").value, 360);
+      const en = hhmmToMin(document.getElementById("batPauseEnd").value, 660);
+      const addSeg = (a, b) => {
+        if (b <= a) return;
+        const seg = document.createElement("div");
+        seg.className = "sched-seg";
+        seg.style.left = `${(a / 1440) * 100}%`;
+        seg.style.width = `${((b - a) / 1440) * 100}%`;
+        bar.appendChild(seg);
+      };
+      if (st < en) addSeg(st, en);
+      else if (st > en) { addSeg(st, 1440); addSeg(0, en); }
+    }
+
+    function syncBatteryControlsFromTelemetry(d) {
+      if (!d) return;
+      if (typeof d.bat_max_chg_a === "number") gBatLiveA = d.bat_max_chg_a;
+      if (typeof d.bat_norm_chg_a === "number" && d.bat_norm_chg_a > 0) gBatNormA = d.bat_norm_chg_a;
+      else if (typeof d.bat_max_chg_a === "number" && d.bat_max_chg_a > 0) gBatNormA = d.bat_max_chg_a;
+
+      if (typeof d.bat_sched_enabled === "boolean") {
+        gBatSchedOn = d.bat_sched_enabled;
+        const btn = document.getElementById("batSchedToggle");
+        if (btn) { btn.classList.toggle("on", gBatSchedOn); btn.innerText = gBatSchedOn ? "ON" : "OFF"; }
+      }
+      if (typeof d.tg_bms_alert === "boolean") {
+        gBmsAlertOn = d.tg_bms_alert;
+        const btn = document.getElementById("bmsAlertToggle");
+        if (btn) { btn.classList.toggle("on", gBmsAlertOn); btn.innerText = gBmsAlertOn ? "ON" : "OFF"; }
+      }
+      if (typeof d.tg_grid_alert === "boolean") {
+        gGridAlertOn = d.tg_grid_alert;
+        const btn = document.getElementById("gridAlertToggle");
+        if (btn) { btn.classList.toggle("on", gGridAlertOn); btn.innerText = gGridAlertOn ? "ON" : "OFF"; }
+      }
+      const stEl = document.getElementById("batPauseStart");
+      const enEl = document.getElementById("batPauseEnd");
+      if (!gBatSchedDirty) {
+        if (stEl && document.activeElement !== stEl && typeof d.bat_pause_start === "number") {
+          stEl.value = minToHHMM(d.bat_pause_start);
+        }
+        if (enEl && document.activeElement !== enEl && typeof d.bat_pause_end === "number") {
+          enEl.value = minToHHMM(d.bat_pause_end);
+        }
+      }
+      renderBatSchedBar();
+    }
+
+    async function postBatteryConfig(payload, statusMsg) {
+      const pin = await ensureLocalPin();
+      if (pin === null) return false;
+      const msgEl = document.getElementById("batSchedMsg");
+      try {
+        const res = await fetch("/api/battery/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Admin-Pin": pin },
+          body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let j = {};
+        try { j = JSON.parse(text); } catch (_) {}
+        if (res.ok && j.ok) {
+          if (msgEl) { msgEl.style.color = "#10b981"; msgEl.innerText = statusMsg || ""; }
+          return true;
+        }
+        if (res.status === 401) localStorage.removeItem("deye_local_pin");
+        if (msgEl) { msgEl.style.color = "#ef4444"; msgEl.innerText = j.error || ("Eroare HTTP " + res.status); }
+      } catch (e) {
+        if (msgEl) { msgEl.style.color = "#ef4444"; msgEl.innerText = "Eroare conexiune"; }
+      }
+      return false;
+    }
+
+    async function toggleBatSched() {
+      const next = !gBatSchedOn;
+      const st = hhmmToMin(document.getElementById("batPauseStart").value, 360);
+      const en = hhmmToMin(document.getElementById("batPauseEnd").value, 660);
+      if (await postBatteryConfig({ bat_sched_enabled: next, bat_pause_start: st, bat_pause_end: en }, next ? "Mod Vara activat!" : "Mod Vara dezactivat!")) {
+        gBatSchedOn = next;
+        gBatSchedDirty = false;
+        const btn = document.getElementById("batSchedToggle");
+        if (btn) { btn.classList.toggle("on", gBatSchedOn); btn.innerText = gBatSchedOn ? "ON" : "OFF"; }
+        renderBatSchedBar();
+      }
+    }
+
+    async function saveBatSched() {
+      const st = hhmmToMin(document.getElementById("batPauseStart").value, 360);
+      const en = hhmmToMin(document.getElementById("batPauseEnd").value, 660);
+      if (await postBatteryConfig({ bat_sched_enabled: gBatSchedOn, bat_pause_start: st, bat_pause_end: en }, "Interval orar salvat!")) {
+        gBatSchedDirty = false;
+        renderBatSchedBar();
+      }
+    }
+
+    async function toggleBmsAlert() {
+      const next = !gBmsAlertOn;
+      if (await postBatteryConfig({ tg_bms_alert: next }, "")) {
+        gBmsAlertOn = next;
+        const btn = document.getElementById("bmsAlertToggle");
+        if (btn) { btn.classList.toggle("on", gBmsAlertOn); btn.innerText = gBmsAlertOn ? "ON" : "OFF"; }
+      }
+    }
+
+    async function toggleGridAlert() {
+      const next = !gGridAlertOn;
+      if (await postBatteryConfig({ tg_grid_alert: next }, "")) {
+        gGridAlertOn = next;
+        const btn = document.getElementById("gridAlertToggle");
+        if (btn) { btn.classList.toggle("on", gGridAlertOn); btn.innerText = gGridAlertOn ? "ON" : "OFF"; }
+      }
+    }
+
+    function updateWifiSignal(online, rssi) {
+      const box = document.getElementById("wifiBars");
+      if (!box) return;
+      const bars = box.querySelectorAll(".wifi-bar");
+      let active = 0;
+      if (online && typeof rssi === "number" && rssi < 0) {
+        if (rssi >= -55) active = 5;
+        else if (rssi >= -65) active = 4;
+        else if (rssi >= -75) active = 3;
+        else if (rssi >= -85) active = 2;
+        else active = 1;
+        box.title = `Semnal Wi-Fi ESP32-S3: ${rssi} dBm (${active}/5)`;
+      } else {
+        box.title = "Semnal Wi-Fi ESP32-S3: fara semnal";
+      }
+      bars.forEach((b, idx) => b.classList.toggle("on", idx < active));
+    }
+
+    async function pollServer() {
+      const led = document.getElementById("brandDot");
+      try {
+        const res = await fetch("/api/telemetry");
+        const json = await res.json();
+        gPinRequired = !!json.pin_required;
+        updatePinLockUI(json.pin_locked_sec || 0);
+        updateWifiSignal(!!(json.data && json.data.wifi_connected !== false), json.data ? json.data.wifi_rssi : 0);
+        const connected = !!(json.online && json.data && json.data.logger_connected !== false);
+        if (connected) {
+          led.classList.add("connected");
+          led.title = "Conectat la invertor";
+          applyTelemetryToUI(json.data);
+        } else {
+          led.classList.remove("connected");
+          led.title = "Lipsa conexiune cu invertorul";
+          applyTelemetryToUI({ pv_power_w: 0, grid_power_w: 0, battery_power_w: 0, battery_soc: 0, load_power_w: 0 });
+        }
+      } catch (e) {
+        updateWifiSignal(false, 0);
+        led.classList.remove("connected");
+        led.title = "Lipsa conexiune cu invertorul";
+        applyTelemetryToUI({ pv_power_w: 0, grid_power_w: 0, battery_power_w: 0, battery_soc: 0, load_power_w: 0 });
+      }
+    }
+
+    setInterval(pollServer, 2000);
+    pollServer();
+
+    // Flowing Light Beams Animation
+    function getPt(P0, Pc, P1, Dc, d) {
+      if (d <= Dc) {
+        const t = d / Dc;
+        return { x: P0.x + t * (Pc.x - P0.x), y: P0.y + t * (Pc.y - P0.y) };
+      } else {
+        const t = (d - Dc) / (133.0 - Dc);
+        return { x: Pc.x + t * (P1.x - Pc.x), y: Pc.y + t * (P1.y - Pc.y) };
+      }
+    }
+
+    function renderFlowBeam(g, P0, Pc, P1, Dc, distProgress, color) {
+      const beamLen = 38.0, totalLen = 133.0, cycle = 171.0;
+      const s = ((distProgress % cycle) + cycle) % cycle;
+      const a = Math.max(0.0, s - beamLen);
+      const b = Math.min(totalLen, s);
+      if (a >= b) return;
+      const ptA = getPt(P0, Pc, P1, Dc, a);
+      const ptB = getPt(P0, Pc, P1, Dc, b);
+      const dStr = (b <= Dc || a >= Dc)
+        ? `M ${ptA.x.toFixed(1)} ${ptA.y.toFixed(1)} L ${ptB.x.toFixed(1)} ${ptB.y.toFixed(1)}`
+        : `M ${ptA.x.toFixed(1)} ${ptA.y.toFixed(1)} L ${Pc.x} ${Pc.y} L ${ptB.x.toFixed(1)} ${ptB.y.toFixed(1)}`;
+      g.innerHTML += `<path d="${dStr}" fill="none" stroke="${color}" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35" filter="drop-shadow(0 0 5px ${color})"/>`;
+      g.innerHTML += `<path d="${dStr}" fill="none" stroke="${color}" stroke-width="4.0" stroke-linecap="round" stroke-linejoin="round" filter="drop-shadow(0 0 3px ${color})"/>`;
+      g.innerHTML += `<path d="${dStr}" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>`;
+    }
+
+    let flowDist = 0;
+    function renderFlowAnimation() {
+      flowDist = (flowDist + 1.4) % 171.0;
+      const g = document.getElementById("flowBeams");
+      if (g) {
+        g.innerHTML = "";
+        const pv = currentData.pv_power_w || 0;
+        const grid = currentData.grid_power_w || 0;
+        const bat = currentData.battery_power_w || 0;
+        const load = currentData.load_power_w || 0;
+
+        if (pv > 50) renderFlowBeam(g, {x:120, y:180}, {x:120, y:222}, {x:197, y:222}, 42.0, flowDist, '#f97316');
+        if (grid > 50) renderFlowBeam(g, {x:360, y:180}, {x:360, y:222}, {x:283, y:222}, 42.0, flowDist, '#f43f5e');
+        else if (grid < -50) renderFlowBeam(g, {x:283, y:222}, {x:360, y:222}, {x:360, y:180}, 77.0, flowDist, '#10b981');
+        if (bat > 50) renderFlowBeam(g, {x:197, y:270}, {x:120, y:270}, {x:120, y:300}, 77.0, flowDist, '#10b981');
+        else if (bat < -50) renderFlowBeam(g, {x:120, y:300}, {x:120, y:270}, {x:197, y:270}, 30.0, flowDist, '#fbbf24');
+        if (load > 50) renderFlowBeam(g, {x:283, y:270}, {x:360, y:270}, {x:360, y:300}, 77.0, flowDist, '#38bdf8');
+      }
+      requestAnimationFrame(renderFlowAnimation);
+    }
+    requestAnimationFrame(renderFlowAnimation);
+
+    // Mini Sparklines on Today's Data (24h time axis: 00:00 -> 24:00)
+    function getPointX(p, idx, total, w) {
+      if (typeof p.m === "number") return Math.max(0, Math.min(w, (p.m / 1440) * w));
+      if (total <= 1) {
+        const now = new Date();
+        return ((now.getHours() * 60 + now.getMinutes()) / 1440) * w;
+      }
+      return (idx / (total - 1)) * w;
+    }
+
+    function smoothPathD(coords) {
+      if (coords.length < 2) return "";
+      const clampY = (y) => Math.max(3, Math.min(39, y));
+      let d = `M${coords[0].x.toFixed(1)},${coords[0].y.toFixed(1)}`;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const p0 = coords[i > 0 ? i - 1 : i];
+        const p1 = coords[i];
+        const p2 = coords[i + 1];
+        const p3 = coords[i + 2 < coords.length ? i + 2 : i + 1];
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = clampY(p1.y + (p2.y - p0.y) / 6);
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = clampY(p2.y - (p3.y - p1.y) / 6);
+        d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+      }
+      return d;
+    }
+
+    function drawAreaChart(svgId, points, key, maxVal, color) {
+      const svg = document.getElementById(svgId);
+      if (!svg) return;
+      if (!points.length) { svg.innerHTML = ""; return; }
+      const w = 200, h = 42, pad = 3;
+      const topMax = Math.max(maxVal, ...points.map(p => p[key] || 0), 1);
+      const coords = points.map((p, i) => {
+        const v = p[key] || 0;
+        const x = getPointX(p, i, points.length, w);
+        const y = h - pad - Math.max(0, v / topMax) * (h - pad * 2);
+        return { x, y };
+      });
+      if (coords.length === 1) {
+        const c = coords[0];
+        svg.innerHTML =
+          `<line x1="${c.x.toFixed(1)}" y1="${h}" x2="${c.x.toFixed(1)}" y2="${c.y.toFixed(1)}" stroke="${color}" stroke-width="2" stroke-opacity="0.55"/>` +
+          `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.8" fill="${color}"/>`;
+        return;
+      }
+      const gradId = `grad-${svgId}`;
+      const lineD = smoothPathD(coords);
+      const xFirst = coords[0].x.toFixed(1);
+      const xLast = coords[coords.length - 1].x.toFixed(1);
+      const areaD = `${lineD} L${xLast},${h} L${xFirst},${h} Z`;
+      svg.innerHTML =
+        `<defs>` +
+        `<linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">` +
+        `<stop offset="0%" stop-color="${color}" stop-opacity="0.62"/>` +
+        `<stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>` +
+        `</linearGradient>` +
+        `</defs>` +
+        `<path d="${areaD}" fill="url(#${gradId})"/>` +
+        `<path d="${lineD}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+
+    function drawGridZeroChart(points) {
+      const svg = document.getElementById("chart-grid");
+      if (!svg) return;
+      const zeroLine = `<line x1="0" y1="21" x2="200" y2="21" stroke="#64748b" stroke-width="1" stroke-dasharray="3 2"/>`;
+      if (!points.length) { svg.innerHTML = zeroLine; return; }
+      const w = 200, mid = 21;
+      const maxAbs = Math.max(500, ...points.map(p => Math.abs(p.grid || 0)));
+      // grid < 0 = Export (above zero line, light green #4ade80), grid > 0 = Import (below zero line, bright red #ff2e4c)
+      const coords = points.map((p, i) => {
+        const v = p.grid || 0;
+        const x = getPointX(p, i, points.length, w);
+        const y = mid + (v / maxAbs) * (mid - 3);
+        return { x, y, v };
+      });
+      if (coords.length === 1) {
+        const c = coords[0];
+        const col = c.v < 0 ? "#4ade80" : (c.v > 0 ? "#ff2e4c" : "#64748b");
+        svg.innerHTML =
+          zeroLine +
+          `<line x1="${c.x.toFixed(1)}" y1="${mid}" x2="${c.x.toFixed(1)}" y2="${c.y.toFixed(1)}" stroke="${col}" stroke-width="2" stroke-opacity="0.6"/>` +
+          `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.8" fill="${col}"/>`;
+        return;
+      }
+      const lineD = smoothPathD(coords);
+      const xFirst = coords[0].x.toFixed(1);
+      const xLast = coords[coords.length - 1].x.toFixed(1);
+      const areaD = `${lineD} L${xLast},${mid} L${xFirst},${mid} Z`;
+      svg.innerHTML =
+        `<defs>` +
+        `<clipPath id="gClipTop"><rect x="0" y="0" width="200" height="21"/></clipPath>` +
+        `<clipPath id="gClipBot"><rect x="0" y="21" width="200" height="21"/></clipPath>` +
+        `<linearGradient id="gGradTop" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="21">` +
+        `<stop offset="0%" stop-color="#4ade80" stop-opacity="0.60"/>` +
+        `<stop offset="100%" stop-color="#4ade80" stop-opacity="0.04"/>` +
+        `</linearGradient>` +
+        `<linearGradient id="gGradBot" gradientUnits="userSpaceOnUse" x1="0" y1="21" x2="0" y2="42">` +
+        `<stop offset="0%" stop-color="#ff2e4c" stop-opacity="0.04"/>` +
+        `<stop offset="100%" stop-color="#ff2e4c" stop-opacity="0.62"/>` +
+        `</linearGradient>` +
+        `</defs>` +
+        `<g clip-path="url(#gClipTop)">` +
+        `<path d="${areaD}" fill="url(#gGradTop)"/>` +
+        `<path d="${lineD}" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `</g>` +
+        `<g clip-path="url(#gClipBot)">` +
+        `<path d="${areaD}" fill="url(#gGradBot)"/>` +
+        `<path d="${lineD}" fill="none" stroke="#ff2e4c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `</g>` +
+        zeroLine;
+    }
+
+    async function pollChart() {
+      try {
+        const res = await fetch("/api/chart");
+        const json = await res.json();
+        const pts = json.points || [];
+        if (pts.length > 0) {
+          drawAreaChart("chart-pv", pts, "pv", 1000, "#f97316");
+          drawGridZeroChart(pts);
+          drawAreaChart("chart-bat", pts, "soc", 100, "#10b981");
+          drawAreaChart("chart-load", pts, "load", 1000, "#38bdf8");
+        } else if (currentData && (currentData.pv_power_w || currentData.load_power_w || currentData.battery_soc)) {
+          const now = new Date();
+          const m = now.getHours() * 60 + now.getMinutes();
+          const single = [{
+            m,
+            pv: currentData.pv_power_w || 0,
+            grid: currentData.grid_power_w || 0,
+            soc: currentData.battery_soc || 0,
+            load: currentData.load_power_w || 0
+          }];
+          drawAreaChart("chart-pv", single, "pv", 1000, "#f97316");
+          drawGridZeroChart(single);
+          drawAreaChart("chart-bat", single, "soc", 100, "#10b981");
+          drawAreaChart("chart-load", single, "load", 1000, "#38bdf8");
+        }
+      } catch (e) {}
+    }
+    setInterval(pollChart, 5000);
+    pollChart();
+
+    // History & Calendar Modal
+    let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calDay = new Date().getDate();
+    let pickYear = calYear, pickMonth = calMonth;
+    const months = ["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"];
+    const mShorts = ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Noi","Dec"];
+
+    function formatToday() {
+      const m = String(calMonth + 1).padStart(2, "0");
+      const d = String(calDay).padStart(2, "0");
+      return `${calYear}-${m}-${d}`;
+    }
+
+    function openPeriodModal() {
+      document.getElementById("periodModal").classList.add("open");
+      renderCalendar();
+      document.getElementById("month-pick-text").innerText = `${mShorts[pickMonth]} ${pickYear}`;
+      document.getElementById("year-pick-text").innerText = pickYear;
+    }
+    function closePeriodModal() { document.getElementById("periodModal").classList.remove("open"); }
+
+    function switchPeriodTab(tab, btn) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-ziua").style.display = tab === "Ziua" ? "flex" : "none";
+      document.getElementById("tab-luna").style.display = tab === "Luna" ? "flex" : "none";
+      document.getElementById("tab-anul").style.display = tab === "Anul" ? "flex" : "none";
+      document.getElementById("tab-total").style.display = tab === "Total" ? "flex" : "none";
+    }
+
+    function renderCalendar() {
+      document.getElementById("cal-month-year").innerText = `${calYear} ${months[calMonth]}`;
+      const grid = document.getElementById("cal-grid");
+      grid.innerHTML = "";
+      ["Du","Lu","Ma","Mi","Jo","Vi","Sa"].forEach(d => grid.innerHTML += `<div class="cal-dow">${d}</div>`);
+      const first = new Date(calYear, calMonth, 1).getDay();
+      const total = new Date(calYear, calMonth + 1, 0).getDate();
+      for (let i = 0; i < first; i++) grid.innerHTML += `<div></div>`;
+      for (let d = 1; d <= total; d++) {
+        const cls = d === calDay ? "cal-day selected" : "cal-day";
+        grid.innerHTML += `<div class="${cls}" onclick="selectDay(${d})">${d}</div>`;
+      }
+    }
+    function prevMonth() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+    function nextMonth() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+    function prevMonthPick() { pickMonth--; if (pickMonth < 0) { pickMonth = 11; pickYear--; } document.getElementById("month-pick-text").innerText = `${mShorts[pickMonth]} ${pickYear}`; }
+    function nextMonthPick() { pickMonth++; if (pickMonth > 11) { pickMonth = 0; pickYear++; } document.getElementById("month-pick-text").innerText = `${mShorts[pickMonth]} ${pickYear}`; }
+    function prevYearPick() { pickYear--; document.getElementById("year-pick-text").innerText = pickYear; }
+    function nextYearPick() { pickYear++; document.getElementById("year-pick-text").innerText = pickYear; }
+
+    function selectDay(d) {
+      calDay = d;
+      const dateStr = formatToday();
+      document.getElementById("histPeriodBtn").innerText = `Perioada: ${String(d).padStart(2,"0")}.${String(calMonth+1).padStart(2,"0")}.${calYear} ▾`;
+      closePeriodModal();
+      loadHistory("day", dateStr);
+    }
+
+    function applyPeriod(type) {
+      let dateStr = `${pickYear}-${String(pickMonth + 1).padStart(2, "0")}-01`;
+      if (type === "month") document.getElementById("histPeriodBtn").innerText = `Perioada: ${mShorts[pickMonth]} ${pickYear} ▾`;
+      else if (type === "year") document.getElementById("histPeriodBtn").innerText = `Perioada: Anul ${pickYear} ▾`;
+      else document.getElementById("histPeriodBtn").innerText = `Perioada: Total Istoric ▾`;
+      closePeriodModal();
+      loadHistory(type, dateStr);
+    }
+
+    async function loadHistory(period, dateStr) {
+      try {
+        const res = await fetch(`/api/history?period=${period}&date=${dateStr}`);
+        const h = await res.json();
+        if (h.has_data) {
+          document.getElementById("h-pv").innerText = h.pv_kwh + " kWh";
+          document.getElementById("h-load").innerText = h.load_kwh + " kWh";
+          document.getElementById("h-buy").innerText = h.grid_buy_kwh + " kWh";
+          document.getElementById("h-sell").innerText = h.grid_sell_kwh + " kWh";
+          document.getElementById("h-chg").innerText = h.bat_chg_kwh + " kWh";
+          document.getElementById("h-dis").innerText = h.bat_dis_kwh + " kWh";
+          return;
+        }
+      } catch (e) {}
+      document.getElementById("h-pv").innerText = "0.0 kWh";
+      document.getElementById("h-load").innerText = "0.0 kWh";
+      document.getElementById("h-buy").innerText = "0.0 kWh";
+      document.getElementById("h-sell").innerText = "0.0 kWh";
+      document.getElementById("h-chg").innerText = "0.0 kWh";
+      document.getElementById("h-dis").innerText = "0.0 kWh";
+    }
+
+    async function ensureLocalPin() {
+      if (!gPinRequired) return "";
+      const saved = localStorage.getItem("deye_local_pin");
+      if (saved) return saved;
+
+      const pin = prompt("Introdu codul PIN configurat in portal:");
+      if (pin === null || pin.trim() === "") return null;
+
+      try {
+        const res = await fetch("/api/pin/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: pin.trim() })
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          localStorage.setItem("deye_local_pin", pin.trim());
+          return pin.trim();
+        }
+        if (data.locked) {
+          updatePinLockUI(data.remaining_sec || 3600);
+        }
+        alert(data.error || "PIN gresit!");
+        return null;
+      } catch (e) {
+        alert("Eroare de conexiune cu ESP32-S3!");
+        return null;
+      }
+    }
+
+    async function clearHistory() {
+      const pin = await ensureLocalPin();
+      if (pin === null) return;
+      if (!confirm("Sigur doresti sa stergi tot istoricul din baza de date?")) return;
+      try {
+        const res = await fetch("/api/history/clear", {
+          method: "POST",
+          headers: { "X-Admin-Pin": pin }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById("h-pv").innerText = "0.0 kWh";
+          document.getElementById("h-load").innerText = "0.0 kWh";
+          document.getElementById("h-buy").innerText = "0.0 kWh";
+          document.getElementById("h-sell").innerText = "0.0 kWh";
+          document.getElementById("h-chg").innerText = "0.0 kWh";
+          document.getElementById("h-dis").innerText = "0.0 kWh";
+        } else {
+          if (res.status === 401) localStorage.removeItem("deye_local_pin");
+          alert(data.error || "Eroare la stergerea istoricului!");
+        }
+      } catch (e) {
+        alert("Eroare de conexiune cu serverul!");
+      }
+    }
+
+    async function openSettingsModal() {
+      const modal = document.getElementById("settingsModal");
+      const msg = document.getElementById("cfg-status-msg");
+      msg.innerText = "";
+      const pin = await ensureLocalPin();
+      if (pin === null) return;
+      try {
+        const res = await fetch("/api/config", {
+          headers: { "X-Admin-Pin": pin }
+        });
+        const cfg = await res.json();
+        if (!res.ok) {
+          if (res.status === 401) localStorage.removeItem("deye_local_pin");
+          alert(cfg.error || "PIN invalid!");
+          return;
+        }
+        document.getElementById("cfg-logger-mac").value = cfg.logger_mac || "";
+        document.getElementById("cfg-logger-ip").value = cfg.logger_ip || "";
+        document.getElementById("cfg-logger-sn").value = cfg.logger_sn || "";
+        const dtHex = cfg.inv_dev_type ? ` (0x${Number(cfg.inv_dev_type).toString(16).toUpperCase().padStart(4, "0")})` : "";
+        const modelStr = cfg.inv_phases === 3 ? `Deye Trifazat${dtHex} | ` : (cfg.inv_phases === 1 ? `Deye Monofazat${dtHex} | ` : "");
+        document.getElementById("selectedInverterInfo").innerText = cfg.logger_sn
+          ? `Logger activ: ${modelStr}${cfg.logger_ip || "-"} | MAC: ${cfg.logger_mac || "-"} | SN: ${cfg.logger_sn}`
+          : "Niciun logger selectat — apasa Scaneaza.";
+        document.getElementById("cfg-interval").value = Math.max(5, Math.round((cfg.send_interval_ms || 5000) / 1000));
+        document.getElementById("cfg-tg-token").value = cfg.tg_bot_token || "";
+        document.getElementById("cfg-tg-chat").value = cfg.tg_chat_id || "";
+        document.getElementById("fwVersionBadge").innerText = cfg.fw_version || "v1.0.0";
+      } catch (e) {
+        alert("Eroare de conexiune cu ESP32-S3!");
+        return;
+      }
+      modal.classList.add("open");
+    }
+
+    function closeSettingsModal() {
+      document.getElementById("settingsModal").classList.remove("open");
+    }
+
+    async function saveSettings() {
+      const msg = document.getElementById("cfg-status-msg");
+      const pin = localStorage.getItem("deye_local_pin") || "";
+      const sec = Math.max(5, Math.min(60, parseInt(document.getElementById("cfg-interval").value, 10) || 5));
+      const payload = {
+        logger_mac: document.getElementById("cfg-logger-mac").value.trim(),
+        logger_ip: document.getElementById("cfg-logger-ip").value.trim(),
+        logger_sn: parseInt(document.getElementById("cfg-logger-sn").value, 10) || 0,
+        send_interval_ms: sec * 1000,
+        tg_bot_token: document.getElementById("cfg-tg-token").value.trim(),
+        tg_chat_id: document.getElementById("cfg-tg-chat").value.trim(),
+      };
+
+      msg.style.color = "#94a3b8";
+      msg.innerText = "Se salveaza...";
+      try {
+        const res = await fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Admin-Pin": pin },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.style.color = "#10b981";
+          msg.innerText = "Salvat! Setarile au fost aplicate pe ESP32-S3.";
+        } else {
+          if (res.status === 401) localStorage.removeItem("deye_local_pin");
+          msg.style.color = "#ef4444";
+          msg.innerText = "Eroare: " + (data.error || res.status);
+        }
+      } catch (e) {
+        msg.style.color = "#ef4444";
+        msg.innerText = "Eroare de conexiune cu ESP32-S3.";
+      }
+    }
+
+    function selectScannedInverter(mac, ip, sn, model) {
+      if (mac) document.getElementById("cfg-logger-mac").value = mac;
+      if (ip) document.getElementById("cfg-logger-ip").value = ip;
+      if (sn && Number(sn) > 0) document.getElementById("cfg-logger-sn").value = sn;
+      const curMac = document.getElementById("cfg-logger-mac").value || "-";
+      const curSn = document.getElementById("cfg-logger-sn").value || "-";
+      document.getElementById("selectedInverterInfo").innerText = `Selectat: ${model} | ${ip} | MAC: ${curMac} | SN: ${curSn}`;
+      saveSettings();
+    }
+
+    async function scanInverters() {
+      const btn = document.getElementById("btnScanInverter");
+      const box = document.getElementById("scanResults");
+      const pin = localStorage.getItem("deye_local_pin") || "";
+      btn.disabled = true;
+      box.style.display = "block";
+      box.innerHTML = "<span style='color:#38bdf8;'>Se scaneaza reteaua locala... (max 3s)</span>";
+      try {
+        const res = await fetch("/api/logger/scan", {
+          headers: { "X-Admin-Pin": pin }
+        });
+        const data = await res.json();
+        const list = data.loggers || [];
+        if (!list.length) {
+          box.innerHTML = "<span style='color:#fbbf24;'>Niciun logger Solarman/Deye gasit pe reteaua Wi-Fi.</span>";
+        } else {
+          box.innerHTML = "<div style='color:#94a3b8;margin-bottom:6px;'>Alege invertorul detectat:</div>" +
+            list.map(x =>
+              `<div onclick="selectScannedInverter('${x.mac}','${x.ip}',${x.sn},'${x.model}')" ` +
+              `style="padding:7px 9px;margin-bottom:4px;border:1px solid #0284c7;border-radius:6px;background:#132238;cursor:pointer;">` +
+              `<b style="color:#34d399;">${x.model}</b><br>` +
+              `<span style="color:#cbd5e1;">IP: ${x.ip} | MAC: ${x.mac} | SN: ${x.sn}</span>` +
+              `</div>`
+            ).join("");
+        }
+      } catch (e) {
+        box.innerHTML = "<span style='color:#ef4444;'>Eroare de conexiune cu ESP32-S3.</span>";
+      }
+      btn.disabled = false;
+    }
+
+    function uploadOTA() {
+      const inp = document.getElementById("otaFile");
+      const btn = document.getElementById("btnOtaUpload");
+      const msg = document.getElementById("cfg-status-msg");
+      if (!inp.files || !inp.files.length) {
+        msg.style.color = "#ef4444";
+        msg.innerText = "Alege mai intai fisierul deye_esp32_s3_bridge.bin!";
+        return;
+      }
+      const file = inp.files[0];
+      if (!file.name.endsWith(".bin")) {
+        msg.style.color = "#ef4444";
+        msg.innerText = "Fisierul trebuie sa aiba extensia .bin!";
+        return;
+      }
+      btn.disabled = true;
+      const pWrap = document.getElementById("ota-progress-wrap");
+      const pBar = document.getElementById("ota-progress-bar");
+      if (pWrap && pBar) { pWrap.style.display = "block"; pBar.style.width = "0%"; }
+      msg.style.color = "#38bdf8";
+      msg.innerText = "Se incarca firmware: 0%...";
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/ota", true);
+      xhr.setRequestHeader("X-Admin-Pin", localStorage.getItem("deye_local_pin") || "");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          if (pBar) pBar.style.width = `${pct}%`;
+          msg.innerText = `Se incarca firmware: ${pct}%...`;
+        }
+      };
+      xhr.onload = () => {
+        btn.disabled = false;
+        try {
+          const d = JSON.parse(xhr.responseText);
+          if (xhr.status === 200 && d.ok) {
+            if (pBar) pBar.style.width = "100%";
+            msg.style.color = "#10b981";
+            msg.innerText = "OTA reusit (100%)! ESP32-S3 reporneste... Pagina se va reincarca in 8s.";
+            setTimeout(() => location.reload(), 8000);
+          } else {
+            if (pWrap) pWrap.style.display = "none";
+            msg.style.color = "#ef4444";
+            msg.innerText = "Eroare OTA: " + (d.error || xhr.status);
+          }
+        } catch (e) {
+          if (pWrap) pWrap.style.display = "none";
+          msg.style.color = "#ef4444";
+          msg.innerText = "Raspuns invalid de la ESP32-S3.";
+        }
+      };
+      xhr.onerror = () => {
+        btn.disabled = false;
+        if (pWrap) pWrap.style.display = "none";
+        msg.style.color = "#ef4444";
+        msg.innerText = "Eroare conexiune in timpul upload-ului OTA.";
+      };
+      xhr.send(file);
+    }
+
+    async function testTelegram() {
+      const msg = document.getElementById("cfg-status-msg");
+      await saveSettings();
+      msg.style.color = "#94a3b8";
+      msg.innerText = "Se trimite mesajul de test pe Telegram...";
+      try {
+        const res = await fetch("/api/telegram/test", {
+          method: "POST",
+          headers: { "X-Admin-Pin": localStorage.getItem("deye_local_pin") || "" },
+        });
+        const data = await res.json();
+        if (data.ok) {
+          msg.style.color = "#10b981";
+          msg.innerText = "Mesajul de test a fost trimis pe Telegram!";
+        } else {
+          msg.style.color = "#ef4444";
+          msg.innerText = "Eroare Telegram: " + (data.error || "necunoscuta");
+        }
+      } catch (e) {
+        msg.style.color = "#ef4444";
+        msg.innerText = "Eroare comunicare cu ESP32-S3.";
+      }
+    }
+
+    // PWA Service Worker & Installer
+    let deferredInstallPrompt = null;
+    const installBtn = document.getElementById("pwaInstallBtn");
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
+    // Keep screen awake (Screen Wake Lock API over HTTPS)
+    let wakeLock = null;
+    async function requestWakeLock() {
+      if (!("wakeLock" in navigator) || document.visibilityState !== "visible") return;
+      try {
+        if (wakeLock) return;
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => { wakeLock = null; });
+      } catch (e) {
+        wakeLock = null;
+      }
+    }
+    requestWakeLock();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") requestWakeLock();
+    });
+    document.addEventListener("pointerdown", requestWakeLock, { passive: true });
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (!isStandalone && installBtn) {
+        installBtn.style.display = "inline-flex";
+      }
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      if (installBtn) installBtn.style.display = "none";
+    });
+
+    if (isIOS && !isStandalone && installBtn) {
+      installBtn.style.display = "inline-flex";
+    }
+
+    async function installPWA() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          deferredInstallPrompt = null;
+          installBtn.style.display = "none";
+        }
+      } else if (isIOS) {
+        alert("Pentru instalare pe iPhone/iPad: apasa butonul Share (patratul cu sageata in sus) si alege 'Add to Home Screen'.");
+      }
+    }
+  </script>
+</body>
+</html>
+

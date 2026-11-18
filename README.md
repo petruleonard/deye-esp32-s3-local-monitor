@@ -1,0 +1,112 @@
+# ⚡ Deye Solar Monitor — Server Web Local pe ESP32-S3 (`http://deye.local/`)
+
+Aplicație complet autonomă de monitorizare în timp real, istoric energetic, control încărcare baterie (**Mod Vară 0 A**) și alerte **Telegram** pentru invertoare **Deye Hibride (Monofazate și Trifazate)**, rulată direct pe o plăcuță **ESP32-S3 DevKitC-1 N16R8** — **fără server extern, fără Raspberry Pi și fără abonament cloud**.
+
+![Dashboard Preview](docs/dashboard_preview.jpg)
+
+---
+
+## ✨ Funcționalități principale
+
+- **100% Local & Autonom (`http://deye.local/`)**: Serverul web, baza de date de istoric (pe Flash-ul de 16 MB) și grafica animată rulează direct pe ESP32-S3.
+- **Universal pentru Invertoare Deye Hibride**:
+  - **Auto-detecție în rețea (UDP `48899` + TCP `8899`)** a stick-ului Wi-Fi Solarman (LSW-3 / LSW-5) montat pe invertor.
+  - **Recunoaștere automată a tipului de invertor** din registrul `0` (**Deye Monofazat** `1-Phase` sau **Deye Trifazat** `3-Phase`) și memorare permanentă în NVS pentru citirea exactă a registrelor Modbus RTU peste Solarman V5.
+- **Dashboard Live & PWA pentru Smartphone / PC**:
+  - Diagramă animată în timp real cu fluxurile energetice (**Panouri Fotovoltaice**, **Baterie**, **Rețea**, **Consum Casă**) și mini-grafice pe 24h.
+  - Indicator vizual cu 5 trepte pentru puterea semnalului Wi-Fi al plăcii ESP32-S3 (`dBm`).
+  - Se poate instala ca aplicație nativă pe telefon (**PWA — Add to Home Screen**), cu suport pentru gestul de întoarcere (**swipe de la marginea ecranului**) și **pull-to-refresh (swipe de sus în jos)**.
+- **Program Încărcare Baterie — Mod Vară (`0 A`)**:
+  - Permite selectarea unui interval orar (ex. `06:00 → 11:00`) în care curentul maxim de încărcare a bateriei este setat automat la **`0 A`** pentru ca bateria să rămână disponibilă să preia vârful de producție solară la orele cu supratensiuni în rețea.
+  - La sfârșitul intervalului, restaurează automat curentul normal al invertorului (ex. `60 A` / `100 A`, citit dinamic din registrul invertorului).
+  - Scrie în registrul invertorului doar la tranzițiile orare (maximum 2 scrieri/zi) pentru a proteja memoria internă a invertorului.
+
+![Program Incarcare Mod Vara](docs/battery_schedule_preview.jpg)
+
+- **Alerte Telegram cu Butoane `ON/OFF` individuale**:
+  - **Alertă Lipsă Tensiune Rețea** (în ecranul *Parametrii Rețea*): trimite notificare pe Telegram la căderea rețelei (`< 50 V`) și la revenirea tensiunii, cu SoC-ul bateriei și consumul casei.
+  - **Alertă Pierdere Comunicație BMS Baterie** (în ecranul *Parametrii Baterie*): trimite notificare pe Telegram dacă invertorul pierde comunicația cu BMS-ul bateriei.
+- **Istoric Energetic Local (Zi / Lună / An / Total)** salvat în partiția Flash dedicată de pe ESP32-S3.
+- **Actualizare Firmware prin Wi-Fi (OTA `.bin`)** direct din interfața web + rollback automat în caz de eroare.
+- **Securizare prin Cod PIN** (configurat la prima instalare în portalul Wi-Fi, cu blocare temporară după 3 încercări greșite).
+
+---
+
+## 🛠️ Hardware compatibil
+
+| Componentă | Specificație recomandată |
+| :--- | :--- |
+| **Placă de dezvoltare** | **ESP32-S3 DevKitC-1 N16R8** (**16 MB Flash** + **8 MB Octal PSRAM**) |
+| **Logger Invertor** | Stick Wi-Fi **Solarman** (LSW-3 / LSW-5, port local `8899` TCP / `48899` UDP) |
+| **Invertoare compatibile** | **Deye Hibrid Monofazat** (ex. `SUN-3.6K/5K/6K/8K-SG03LP1 / SG04LP1 / SG05LP1`) și **Deye Hibrid Trifazat** (ex. `SUN-8K/10K/12K-SG04LP3`) |
+
+---
+
+## 🚀 Instalare și Configurare (Pas cu Pas)
+
+### 1. Scrierea firmware-ului pe ESP32-S3 (prima dată, prin cablu USB)
+
+#### Varianta A — Rapid, cu fișierele precompilate (`build/`)
+1. Conectează placa **ESP32-S3 DevKitC-1 N16R8** la PC prin portul USB (**USB** / **UART**).
+2. Rulează scriptul **`flash_esp32_s3.bat`** (sau cu `esptool.py`):
+   ```bash
+   esptool --chip esp32s3 -b 460800 write_flash --flash_mode dio --flash_size 16MB ^
+     0x0 build/bootloader/bootloader.bin ^
+     0x8000 build/partition_table/partition-table.bin ^
+     0xe000 build/ota_data_initial.bin ^
+     0x10000 build/deye_esp32_s3_bridge.bin
+   ```
+
+#### Varianta B — Compilare din codul sursă (ESP-IDF v5.x / v6.x)
+```bash
+idf.py set-target esp32s3
+idf.py build
+idf.py -p COMx flash
+```
+
+---
+
+### 2. Configurarea Wi-Fi și a Codului PIN (Captive Portal)
+
+1. La prima pornire (sau dacă ții apăsat butonul **`BOOT`** de pe placă timp de **3 secunde**), ESP32-S3 creează hotspotul Wi-Fi:
+   - **Nume rețea (SSID):** `Deye-ESP32-Setup` (fără parolă)
+2. Conectează-te cu telefonul sau laptopul la rețeaua **`Deye-ESP32-Setup`**.
+3. Fereastra de configurare se deschide automat (**Captive Portal**) — sau accesează în browser **`http://192.168.4.1`**:
+   - Apasă **Scanează Rețele Wi-Fi**, alege rețeaua Wi-Fi a casei (cea la care este conectat și loggerul invertorului) și introdu parola Wi-Fi.
+   - Setează un **Cod PIN de Administrator** (opțional, recomandat pentru protejarea setărilor și a comenzilor).
+   - Apasă **Salvează & Conectează**.
+
+---
+
+### 3. Accesarea aplicației și detectarea invertorului (`http://deye.local/`)
+
+1. După conectarea la Wi-Fi, deschide în browser (pe telefon sau PC, în aceeași rețea Wi-Fi):
+   - **`http://deye.local/`** (sau direct adresa IP primită de ESP32-S3 de la router).
+2. Placa **detectează automat** loggerul Solarman din rețea și tipul invertorului (**Monofazat** sau **Trifazat**).
+3. Pentru verificare sau schimbare manuală, deschide **⚙ Setari Sistem & Logger**:
+   - Apasă **🔍 Scaneaza Invertor Deye pe retea** → selectează invertorul detectat.
+   - *(Opțional)* Completează **Telegram Bot Token** (de la `@BotFather`) și **Telegram Chat ID** (de la `@userinfobot`) și apasă **Testeaza Notificare Telegram**.
+   - *(Opțional)* Pentru actualizări ulterioare de firmware, încarcă fișierul `.bin` direct în secțiunea **Actualizare Firmware prin Wi-Fi (OTA .bin)**.
+
+---
+
+## 📂 Structura Proiectului
+
+```text
+├── main/
+│   ├── main.c               # Inițializare sistem, Wi-Fi, SNTP, verificare/rollback OTA
+│   ├── app_config.h         # Constante implicite (fără date personale) și versiune firmware
+│   ├── app_settings.c/.h    # Salvare persistentă a setărilor în memoria NVS
+│   ├── wifi_manager.c/.h    # Gestionare Wi-Fi STA + SoftAP (Deye-ESP32-Setup) + buton BOOT 3s
+│   ├── solarman_v5.c/.h     # Protocol Solarman V5 peste TCP 8899 (Modbus 0x03 Read / 0x10 Write)
+│   ├── logger_discovery.c/.h# Auto-detecție logger pe LAN (UDP 48899 + scanare rapidă TCP 8899)
+│   ├── deye_modbus.c/.h     # Poller universal Deye Monofazat & Trifazat + Mod Vară 0A
+│   ├── history_store.c/.h   # Stocare istoric energetic pe Flash + sincronizare oră SNTP România
+│   ├── telegram_notify.c/.h # Notificări HTTPS direct către API-ul Telegram (Rețea & BMS)
+│   └── local_web_server.c/.h# Server HTTP local, Captive Portal DNS, API JSON și OTA update
+├── web/
+│   └── index.html           # Interfața web completă (Dashboard SVG, Parametri, Istoric, PWA)
+├── docs/                    # Capturi de ecran pentru documentație
+├── partitions.csv           # Tabelul de partiții pentru Flash 16 MB (Dual OTA + History Storage)
+└── CMakeLists.txt           # Configurație build ESP-IDF
+```
