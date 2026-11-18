@@ -11,3 +11,6 @@ __pycache__/
 *.flag
 sdkconfig
 sdkconfig.old
+simulate_solarman_logger.py
+managed_components/
+dependencies.lock
