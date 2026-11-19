@@ -1373,7 +1373,7 @@
       const gPath = document.getElementById("path-grid-base");
       const gW = d.grid_power_w || 0;
       const gridDown = (d.logger_connected === true) && ((d.grid_volts || 0) < 50);
-      document.getElementById("main-grid-val").innerText = ((!gridDown && gW > 50) ? "-" : "") + fmtW(gW);
+      document.getElementById("main-grid-val").innerText = ((!gridDown && gW > 0) ? "-" : "") + fmtW(gW);
       if (gridDown) {
         gFault.style.display = "block";
         gPath.setAttribute("stroke", "#ef4444");
@@ -1386,12 +1386,12 @@
         gFault.style.display = "none";
         gPath.setAttribute("stroke", "#253346");
         gPath.removeAttribute("stroke-dasharray");
-        if (gW < -50) {
+        if (gW < 0) {
           gSub.innerText = "Export in Retea";
           gSub.style.color = "#34d399";
           gCard.style.borderColor = "#10b981";
           document.getElementById("main-grid-daily").innerText = `Export: ${(d.grid_sell_today_kwh || 0).toFixed(1)} kWh`;
-        } else if (gW > 50) {
+        } else if (gW > 0) {
           gSub.innerText = "Import din Retea";
           gSub.style.color = "#fb7185";
           gCard.style.borderColor = "#f43f5e";
@@ -1418,12 +1418,12 @@
       const soc = Math.max(0, Math.min(100, d.battery_soc || 0));
       const bW = d.battery_power_w || 0;
       document.getElementById("main-bat-soc").innerText = soc + "%";
-      document.getElementById("main-bat-val").innerText = (bW < -50 ? "-" : "") + fmtW(bW);
-      if (bW > 50) {
+      document.getElementById("main-bat-val").innerText = (bW < 0 ? "-" : "") + fmtW(bW);
+      if (bW > 0) {
         document.getElementById("main-bat-sub").innerText = "Incarcare";
         document.getElementById("main-bat-sub").style.color = "#34d399";
         document.getElementById("main-bat-daily").innerText = `Incarcat: ${(d.battery_charge_today_kwh || 0).toFixed(1)} kWh`;
-      } else if (bW < -50) {
+      } else if (bW < 0) {
         document.getElementById("main-bat-sub").innerText = "Descarcare";
         document.getElementById("main-bat-sub").style.color = "#fbbf24";
         document.getElementById("main-bat-daily").innerText = `Descarcat: ${(d.battery_discharge_today_kwh || 0).toFixed(1)} kWh`;
@@ -1764,12 +1764,12 @@
         const bat = currentData.battery_power_w || 0;
         const load = currentData.load_power_w || 0;
 
-        if (pv > 50) renderFlowBeam(g, {x:120, y:180}, {x:120, y:222}, {x:197, y:222}, 42.0, flowDist, '#f97316');
-        if (grid > 50) renderFlowBeam(g, {x:360, y:180}, {x:360, y:222}, {x:283, y:222}, 42.0, flowDist, '#f43f5e');
-        else if (grid < -50) renderFlowBeam(g, {x:283, y:222}, {x:360, y:222}, {x:360, y:180}, 77.0, flowDist, '#10b981');
-        if (bat > 50) renderFlowBeam(g, {x:197, y:270}, {x:120, y:270}, {x:120, y:300}, 77.0, flowDist, '#10b981');
-        else if (bat < -50) renderFlowBeam(g, {x:120, y:300}, {x:120, y:270}, {x:197, y:270}, 30.0, flowDist, '#fbbf24');
-        if (load > 50) renderFlowBeam(g, {x:283, y:270}, {x:360, y:270}, {x:360, y:300}, 77.0, flowDist, '#38bdf8');
+        if (pv > 0) renderFlowBeam(g, {x:120, y:180}, {x:120, y:222}, {x:197, y:222}, 42.0, flowDist, '#f97316');
+        if (grid > 0) renderFlowBeam(g, {x:360, y:180}, {x:360, y:222}, {x:283, y:222}, 42.0, flowDist, '#f43f5e');
+        else if (grid < 0) renderFlowBeam(g, {x:283, y:222}, {x:360, y:222}, {x:360, y:180}, 77.0, flowDist, '#10b981');
+        if (bat > 0) renderFlowBeam(g, {x:197, y:270}, {x:120, y:270}, {x:120, y:300}, 77.0, flowDist, '#10b981');
+        else if (bat < 0) renderFlowBeam(g, {x:120, y:300}, {x:120, y:270}, {x:197, y:270}, 30.0, flowDist, '#fbbf24');
+        if (load > 0) renderFlowBeam(g, {x:283, y:270}, {x:360, y:270}, {x:360, y:300}, 77.0, flowDist, '#38bdf8');
       }
       requestAnimationFrame(renderFlowAnimation);
     }

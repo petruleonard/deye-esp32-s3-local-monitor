@@ -208,7 +208,7 @@ static esp_err_t poll_three_phase(deye_data_t *cur)
 
     if (cur->pv_power_w > cur->load_power_w) {
         snprintf(cur->load_source_str, sizeof(cur->load_source_str), "Solar");
-    } else if (cur->battery_power_w < -50) {
+    } else if (cur->battery_power_w < 0) {
         snprintf(cur->load_source_str, sizeof(cur->load_source_str), "Baterie");
     } else {
         snprintf(cur->load_source_str, sizeof(cur->load_source_str), "Retea");
@@ -412,7 +412,7 @@ static void deye_poller_task(void *pvParameters)
 
             if (cur.pv_power_w > cur.load_power_w) {
                 snprintf(cur.load_source_str, sizeof(cur.load_source_str), "Solar");
-            } else if (cur.battery_power_w < -50) {
+            } else if (cur.battery_power_w < 0) {
                 snprintf(cur.load_source_str, sizeof(cur.load_source_str), "Baterie");
             } else {
                 snprintf(cur.load_source_str, sizeof(cur.load_source_str), "Retea");

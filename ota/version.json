@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.2",
+  "version": "v1.4.3",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Elimina taierea/scalarea intarziata a dashboard-ului la refresh sau redeschidere pe telefon."
+  "notes": "Elimina pragul deadband de 50W: animatiile de curgere si starile Import/Export/Incarcare/Descarcare pornesc de la orice valoare diferita de 0 W."
 }
