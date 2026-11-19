@@ -381,7 +381,7 @@
       backdrop-filter: blur(18px) saturate(150%);
       -webkit-backdrop-filter: blur(18px) saturate(150%);
       border-radius: 18px;
-      padding: 9px 12px 6px;
+      padding: 8px 10px 6px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -394,13 +394,15 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 4px;
       width: 100%;
+      flex: 1;
     }
     .mini-chart {
       width: 100%;
-      height: 42px;
+      height: 44px;
       display: block;
-      margin-top: 2px;
+      margin-top: 4px;
       border-radius: 8px;
       background: rgba(8, 13, 25, 0.52);
       border: 1px solid rgba(255, 255, 255, 0.06);
@@ -432,7 +434,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 62px;
+      width: 68px;
       flex-shrink: 0;
     }
     .card-val-col {
@@ -441,18 +443,19 @@
       align-items: flex-end;
       justify-content: center;
       flex-grow: 1;
+      min-width: 0;
     }
-    .card-val { font-size: 22px; font-weight: 800; color: #fff; }
-    .card-sub { font-size: 12px; font-weight: 700; margin-top: 3px; }
+    .card-val { font-size: 25px; line-height: 1.08; font-weight: 800; letter-spacing: -0.4px; color: #fff; white-space: nowrap; }
+    .card-sub { font-size: 13.5px; font-weight: 700; margin-top: 4px; }
     .card-daily {
       font-size: 13px;
       font-weight: 700;
       color: #e2e8f0;
-      margin-top: 6px;
-      background: rgba(255, 255, 255, 0.06);
-      padding: 3px 9px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 7px;
+      background: rgba(255, 255, 255, 0.07);
+      padding: 4px 8px;
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       white-space: nowrap;
     }
 
@@ -737,7 +740,7 @@
           <div class="live-card live-card-pv" onclick="openScreen('view-solar')">
             <div class="card-top-row">
               <div class="card-icon-col">
-                <svg width="52" height="48" viewBox="0 0 64 64" style="filter:drop-shadow(0 4px 8px rgba(249,115,22,0.35));">
+                <svg width="64" height="60" viewBox="0 0 64 64" style="filter:drop-shadow(0 4px 8px rgba(249,115,22,0.35));">
                   <defs>
                     <radialGradient id="sun3d" cx="35%" cy="30%" r="65%">
                       <stop offset="0%" stop-color="#fef08a"/>
@@ -789,7 +792,7 @@
           <div class="live-card live-card-grid" id="main-grid-card" onclick="openScreen('view-grid')">
             <div class="card-top-row">
               <div class="card-icon-col">
-                <svg width="48" height="48" viewBox="0 0 64 64" style="filter:drop-shadow(0 4px 8px rgba(251,113,133,0.3));">
+                <svg width="60" height="60" viewBox="0 0 64 64" style="filter:drop-shadow(0 4px 8px rgba(251,113,133,0.3));">
                   <defs>
                     <linearGradient id="towerMetal" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stop-color="#fda4af"/>
@@ -853,8 +856,8 @@
           <!-- CARD 3: BATERIE (3D Glass Battery + 5 Dynamic SoC Bars) -->
           <div class="live-card live-card-bat" id="main-bat-card" onclick="openScreen('view-battery')">
             <div class="card-top-row">
-              <div class="card-icon-col" style="width: 62px;">
-                <svg width="58" height="30" viewBox="0 0 58 30" style="filter:drop-shadow(0 4px 8px rgba(16,185,129,0.35));">
+              <div class="card-icon-col" style="width: 68px;">
+                <svg width="66" height="35" viewBox="0 0 58 30" style="filter:drop-shadow(0 4px 8px rgba(16,185,129,0.35));">
                   <defs>
                     <linearGradient id="batGlass" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stop-color="#1e293b"/>
@@ -876,7 +879,7 @@
                   <rect x="39.5" y="6.5" width="6.5" height="17" rx="1.8" fill="#10b981" id="bat-bar-5"/>
                   <rect x="3.5" y="4.5" width="45" height="10" rx="3.5" fill="url(#batSheen)" style="pointer-events:none;"/>
                 </svg>
-                <div style="font-size:15px; font-weight:900; color:#10b981; margin-top:3px;" id="main-bat-soc">--%</div>
+                <div style="font-size:17px; font-weight:900; color:#10b981; margin-top:4px;" id="main-bat-soc">--%</div>
               </div>
               <div class="card-val-col">
                 <div class="card-val" id="main-bat-val">--</div>
@@ -891,7 +894,7 @@
           <div class="live-card live-card-load" onclick="openScreen('view-load')">
             <div class="card-top-row">
               <div class="card-icon-col">
-                <svg width="50" height="48" viewBox="0 0 64 64" style="filter:drop-shadow(0 4px 8px rgba(56,189,248,0.35));">
+                <svg width="62" height="60" viewBox="0 0 64 64" style="filter:drop-shadow(0 4px 8px rgba(56,189,248,0.35));">
                   <defs>
                     <linearGradient id="houseRoof" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stop-color="#38bdf8"/>

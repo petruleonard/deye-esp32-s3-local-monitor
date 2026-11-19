@@ -82,7 +82,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
    - *(Notă Windows SmartScreen: Pentru că fișierul este descărcat de pe internet, Windows poate afișa la primul dublu-click o fereastră albastră **"Windows protected your PC" / "Windows v-a protejat PC-ul"**. Apasă pe **"More info" / "Mai multe informații"** și apoi pe butonul **"Run anyway" / "Rulați oricum"**).*
    - Se deschide automat fereastra de instalare care detectează Python, instalează `esptool` (dacă nu există deja) și afișează lista porturilor `COM` găsite pe PC.
    - Apasă direct tasta **`Enter`** pentru a folosi portul `COM` detectat automat (sau tastează portul dorit, de ex. `COM7`, și apasă `Enter`).
-   - Scriptul scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.4.0` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de siguranță `ota_1` la `0x320000` pentru rollback automat):
+   - Scriptul scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.4.1` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de siguranță `ota_1` la `0x320000` pentru rollback automat):
    ```bash
    python -m esptool --chip esp32s3 -b 460800 write_flash --flash-mode dio --flash-size 16MB ^
      0x0 build/bootloader/bootloader.bin ^
@@ -91,7 +91,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
      0x20000 build/deye_esp32_s3_bridge.bin ^
      0x320000 build/deye_esp32_s3_bridge.bin
    ```
-   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.4.0 incarcat cu succes`** până o închizi de la butonul **Close (`X`)**.
+   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.4.1 incarcat cu succes`** până o închizi de la butonul **Close (`X`)**.
 
 #### Varianta B — Compilare din codul sursă (ESP-IDF v5.x / v6.x)
 ```bash
