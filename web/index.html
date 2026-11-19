@@ -721,6 +721,7 @@
     <!-- Responsive 1:1 Stage -->
     <div class="screen-frame" id="screenFrame">
       <div class="scale-stage" id="scaleStage">
+        <script>(function(){var f=document.getElementById("screenFrame"),s=document.getElementById("scaleStage");if(f&&s&&f.clientWidth>0){var k=f.clientWidth/480.0;s.style.transform="scale("+k+")";f.style.height=(Math.ceil(480*k)+3)+"px";}})();</script>
 
         <!-- VIEW 1: FLUX ENERGETIC LIVE -->
         <div class="view-screen active" id="view-main">
@@ -1253,10 +1254,10 @@
         const active = stage.querySelector(".view-screen.active");
         const h = active ? active.scrollHeight : 480;
         stage.style.height = h + "px";
-        frame.style.height = (Math.ceil(h * scale) + 4) + "px";
+        frame.style.height = (Math.ceil(h * scale) + 3) + "px";
       } else {
         stage.style.height = "480px";
-        frame.style.height = (Math.ceil(480 * scale) + 4) + "px";
+        frame.style.height = (Math.ceil(480 * scale) + 3) + "px";
       }
     }
     window.addEventListener("resize", resizeStage);

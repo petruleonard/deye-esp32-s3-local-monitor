@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.1",
+  "version": "v1.4.2",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Iconite 3D si valori marite in cardurile live pentru utilizarea mai buna a spatiului de deasupra mini-graficelor."
+  "notes": "Elimina taierea/scalarea intarziata a dashboard-ului la refresh sau redeschidere pe telefon."
 }
