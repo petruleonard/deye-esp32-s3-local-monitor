@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.34",
+  "version": "v1.4.0",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Sincronizeaza corect in interfata web setarile salvate (Mod Vara, alerte BMS/inghet/retea) chiar si cand invertorul este deconectat."
+  "notes": "Interfata noua Dark Glassmorphism (efect de sticla mata, reflexii si aurora) + iconite 3D realiste pentru panouri, retea, invertor, baterie si casa."
 }
