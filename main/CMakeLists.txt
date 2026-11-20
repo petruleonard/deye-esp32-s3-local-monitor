@@ -33,4 +33,5 @@ idf_component_register(
         spi_flash
         bootloader_support
         esp_partition
+        esp_driver_tsens
 )

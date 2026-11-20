@@ -16,6 +16,7 @@
 #include "history_store.h"
 #include "local_web_server.h"
 #include "solarman_v5.h"
+#include "sys_metrics.h"
 #include "telegram_notify.h"
 #include "wifi_manager.h"
 
@@ -76,6 +77,7 @@ void app_main(void)
     ESP_LOGI(TAG, "=== Deye ESP32-S3 Local Web Server ===");
 
     solarman_v5_init();
+    sys_metrics_init();
 
     app_settings_init();
     deye_data_init();

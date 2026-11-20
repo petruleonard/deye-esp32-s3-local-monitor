@@ -365,7 +365,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         "\"inv_phases\":%u,\"inv_dev_type\":%u,"
         "\"cpu_pct\":%d,\"ram_pct\":%d,\"ram_used_kb\":%lu,\"ram_total_kb\":%lu,"
         "\"psram_pct\":%d,\"storage_pct\":%d,\"storage_used_kb\":%lu,\"storage_total_kb\":%lu,"
-        "\"spiffs_used_kb\":%lu,\"spiffs_total_kb\":%lu,"
+        "\"spiffs_used_kb\":%lu,\"spiffs_total_kb\":%lu,\"esp_temp_c\":%.1f,\"esp_temp_ok\":%s,"
         "\"wifi_connected\":%s,\"wifi_rssi\":%d,\"logger_connected\":%s,\"status_str\":\"%s\",\"last_update_sec\":%lu"
         "}}",
         d.logger_connected ? "true" : "false",
@@ -396,6 +396,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         sysm.cpu_pct, sysm.ram_pct, (unsigned long)sysm.ram_used_kb, (unsigned long)sysm.ram_total_kb,
         sysm.psram_pct, sysm.storage_pct, (unsigned long)sysm.storage_used_kb, (unsigned long)sysm.storage_total_kb,
         (unsigned long)sysm.spiffs_used_kb, (unsigned long)sysm.spiffs_total_kb,
+        sysm.esp_temp_c, sysm.esp_temp_ok ? "true" : "false",
         d.wifi_connected ? "true" : "false", wifi_manager_get_rssi(), d.logger_connected ? "true" : "false",
         esc_status, (unsigned long)d.last_update_sec);
 

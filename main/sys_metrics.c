@@ -4,11 +4,28 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/temperature_sensor.h"
 #include "esp_flash.h"
 #include "esp_heap_caps.h"
 #include "esp_image_format.h"
 #include "esp_partition.h"
 #include "esp_timer.h"
+
+static temperature_sensor_handle_t s_tsens = NULL;
+
+void sys_metrics_init(void)
+{
+    if (s_tsens) return;
+    temperature_sensor_config_t cfg = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
+    if (temperature_sensor_install(&cfg, &s_tsens) == ESP_OK) {
+        if (temperature_sensor_enable(s_tsens) != ESP_OK) {
+            temperature_sensor_uninstall(s_tsens);
+            s_tsens = NULL;
+        }
+    } else {
+        s_tsens = NULL;
+    }
+}
 
 static int compute_cpu_load_pct(void)
 {
@@ -140,4 +157,13 @@ void sys_metrics_get(sys_metrics_t *out)
                        ? (int)((flash_used_bytes * 100ULL + (flash_total_bytes / 2ULL)) / flash_total_bytes)
                        : 0;
     if (out->storage_pct < 1 && flash_used_bytes > 0) out->storage_pct = 1;
+
+    if (!s_tsens) sys_metrics_init();
+    if (s_tsens) {
+        float c = 0.0f;
+        if (temperature_sensor_get_celsius(s_tsens, &c) == ESP_OK) {
+            out->esp_temp_c = c;
+            out->esp_temp_ok = true;
+        }
+    }
 }
