@@ -231,14 +231,19 @@ static void deye_poller_task(void *pvParameters)
     uint16_t block1[48]; // Regs 150 to 197 (0x0096 to 0x00C5)
     uint16_t block2[44]; // Regs 70 to 113 (0x0046 to 0x0071)
     bool initial_disc_done = false;
+    bool first_poll_done = false;
     int fail_streak = 0;
 
     while (1) {
-        uint32_t poll_ms = g_settings.send_interval_ms;
-        if (poll_ms < 5000 || poll_ms > 60000) poll_ms = 5000;
-        for (uint32_t waited = 0; waited < poll_ms; waited += 250) {
-            vTaskDelay(pdMS_TO_TICKS(250));
-            if (s_scan_paused) break;
+        if (first_poll_done) {
+            uint32_t poll_ms = g_settings.send_interval_ms;
+            if (poll_ms < 5000 || poll_ms > 60000) poll_ms = 5000;
+            for (uint32_t waited = 0; waited < poll_ms; waited += 250) {
+                vTaskDelay(pdMS_TO_TICKS(250));
+                if (s_scan_paused) break;
+            }
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(200));
         }
         if (s_scan_paused) {
             vTaskDelay(pdMS_TO_TICKS(250));
@@ -252,10 +257,12 @@ static void deye_poller_task(void *pvParameters)
         if (!cur.wifi_connected) {
             cur.logger_connected = false;
             initial_disc_done = false;
+            first_poll_done = false;
             snprintf(cur.status_str, sizeof(cur.status_str), "Wi-Fi deconectat");
             deye_data_update(&cur);
             continue;
         }
+        first_poll_done = true;
 
         if (!initial_disc_done) {
             if (strlen(g_settings.logger_ip) == 0 || g_settings.logger_sn == 0) {

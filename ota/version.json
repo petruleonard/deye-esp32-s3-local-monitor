@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.8",
+  "version": "v1.4.9",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Toate 4 metricile (CPU, RAM, Stocare, Temp) incadrate pe un singur rand, fix comutare Ecran normal -> Ecran activ si reconectare Wi-Fi rapida dupa OTA."
+  "notes": "Pornire Wi-Fi + mDNS + citire logger ultrarapida dupa reboot/OTA (cache canal NVS, mdns_free/deauth la reboot, citire imediata fara delay 5s)."
 }

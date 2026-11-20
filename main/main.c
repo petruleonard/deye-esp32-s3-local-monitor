@@ -76,13 +76,13 @@ void app_main(void)
 
     ESP_LOGI(TAG, "=== Deye ESP32-S3 Local Web Server ===");
 
-    solarman_v5_init();
-    sys_metrics_init();
-
     app_settings_init();
     deye_data_init();
-    history_store_init();
     wifi_manager_init();
+
+    solarman_v5_init();
+    sys_metrics_init();
+    history_store_init();
 
     if (!g_settings.is_configured || g_settings.wifi_ssid[0] == '\0') {
         ESP_LOGW(TAG, "Neconfigurat -> pornesc automat portalul Wi-Fi Setup!");
@@ -114,12 +114,17 @@ void app_main(void)
     }
 
     bool sntp_started = false;
+    bool auto_ap_opened = false;
     int wait_wifi_ms = 0;
     int last_ota_check_yday = -1;
     while (1) {
         if (!sntp_started && wifi_manager_is_connected()) {
             history_store_start_sntp();
             sntp_started = true;
+            if (auto_ap_opened && g_settings.is_configured) {
+                wifi_manager_stop_ap_portal();
+                auto_ap_opened = false;
+            }
             if (ota_pending_verify) {
                 ESP_LOGI(TAG, "Wi-Fi conectat + server web OK -> confirm OTA valid!");
                 esp_ota_mark_app_valid_cancel_rollback();
@@ -130,6 +135,7 @@ void app_main(void)
             esp_ota_mark_app_invalid_rollback_and_reboot();
         } else if (!wifi_manager_is_connected() && !wifi_manager_is_ap_active() && wait_wifi_ms >= 30000) {
             ESP_LOGW(TAG, "Wi-Fi nu s-a conectat in 30s -> pornesc automat portalul Wi-Fi Setup!");
+            auto_ap_opened = true;
             wifi_manager_start_ap_portal();
         }
 

@@ -16,6 +16,7 @@ const char* wifi_manager_get_ip(void);
 int wifi_manager_get_rssi(void);
 
 esp_err_t wifi_manager_start_ap_portal(void);
+void wifi_manager_stop_ap_portal(void);
 bool wifi_manager_is_ap_active(void);
 bool wifi_manager_test_connect(const char *ssid, const char *password, uint32_t timeout_ms);
 

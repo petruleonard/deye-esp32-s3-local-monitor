@@ -17,6 +17,7 @@
 #include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "mdns.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/sockets.h"
@@ -101,7 +102,8 @@ static const char *PORTAL_HTML =
 "</script></body></html>";
 
 static void restart_task(void *arg) {
-    vTaskDelay(pdMS_TO_TICKS(1200));
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    mdns_free();
     wifi_manager_prepare_reboot();
     esp_restart();
 }
@@ -997,8 +999,9 @@ static void ota_github_task(void *arg) {
     s_gh_ota.progress = 100;
     snprintf(s_gh_ota.state, sizeof(s_gh_ota.state), "done");
     snprintf(s_gh_ota.message, sizeof(s_gh_ota.message), "Actualizare reusita! ESP32-S3 reporneste...");
-    ESP_LOGI(TAG, "GitHub OTA reusit pe '%s'! Repornesc in 1.2s...", update_part->label);
-    vTaskDelay(pdMS_TO_TICKS(1200));
+    ESP_LOGI(TAG, "GitHub OTA reusit pe '%s'! Repornesc in 1.0s...", update_part->label);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    mdns_free();
     wifi_manager_prepare_reboot();
     esp_restart();
     vTaskDelete(NULL);
