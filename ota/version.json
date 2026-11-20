@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.9",
+  "version": "v1.5.0",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Pornire Wi-Fi + mDNS + citire logger ultrarapida dupa reboot/OTA (cache canal NVS, mdns_free/deauth la reboot, citire imediata fara delay 5s)."
+  "notes": "Afisare imediata a semnalului Wi-Fi in interfata la incarcarea paginii (fara a astepta raspunsul Solarman/Modbus) + curatare cod Wake Lock."
 }

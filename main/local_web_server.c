@@ -400,7 +400,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         sysm.psram_pct, sysm.storage_pct, (unsigned long)sysm.storage_used_kb, (unsigned long)sysm.storage_total_kb,
         (unsigned long)sysm.spiffs_used_kb, (unsigned long)sysm.spiffs_total_kb,
         sysm.esp_temp_c, sysm.esp_temp_ok ? "true" : "false",
-        d.wifi_connected ? "true" : "false", wifi_manager_get_rssi(), d.logger_connected ? "true" : "false",
+        wifi_manager_is_connected() ? "true" : "false", wifi_manager_get_rssi(), d.logger_connected ? "true" : "false",
         esc_status, (unsigned long)d.last_update_sec);
 
     httpd_resp_set_type(req, "application/json");

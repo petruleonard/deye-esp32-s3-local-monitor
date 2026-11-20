@@ -263,6 +263,10 @@ static void deye_poller_task(void *pvParameters)
             continue;
         }
         first_poll_done = true;
+        if (!cur.logger_connected && !initial_disc_done) {
+            snprintf(cur.status_str, sizeof(cur.status_str), "Conectare la invertor...");
+            deye_data_update(&cur);
+        }
 
         if (!initial_disc_done) {
             if (strlen(g_settings.logger_ip) == 0 || g_settings.logger_sn == 0) {

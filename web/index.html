@@ -2853,24 +2853,6 @@
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
 
-    // Keep screen awake (Screen Wake Lock API over HTTPS)
-    let wakeLock = null;
-    async function requestWakeLock() {
-      if (!("wakeLock" in navigator) || document.visibilityState !== "visible") return;
-      try {
-        if (wakeLock) return;
-        wakeLock = await navigator.wakeLock.request("screen");
-        wakeLock.addEventListener("release", () => { wakeLock = null; });
-      } catch (e) {
-        wakeLock = null;
-      }
-    }
-    requestWakeLock();
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") requestWakeLock();
-    });
-    document.addEventListener("pointerdown", requestWakeLock, { passive: true });
-
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
