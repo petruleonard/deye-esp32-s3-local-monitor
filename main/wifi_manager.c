@@ -10,6 +10,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 
 static const char *TAG = "wifi_manager";
 
@@ -20,7 +21,18 @@ static esp_netif_t *s_sta_netif = NULL;
 static esp_netif_t *s_ap_netif = NULL;
 static bool s_is_connected = false;
 static bool s_ap_active = false;
+static bool s_rebooting = false;
+static int s_retry_count = 0;
+static esp_timer_handle_t s_reconn_timer = NULL;
 static char s_ip_str[16] = "0.0.0.0";
+
+static void reconnect_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_rebooting && !s_is_connected && strlen(g_settings.wifi_ssid) > 0) {
+        esp_wifi_connect();
+    }
+}
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)
@@ -32,16 +44,23 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         uint8_t reason = dis ? dis->reason : 0;
         s_is_connected = false;
         strcpy(s_ip_str, "0.0.0.0");
-        if (!s_ap_active && strlen(g_settings.wifi_ssid) > 0) {
-            ESP_LOGW(TAG, "Wi-Fi disconnected (reason=%u). Reconnecting in 3s...", (unsigned)reason);
-            vTaskDelay(pdMS_TO_TICKS(3000));
-            esp_wifi_connect();
+        if (!s_rebooting && strlen(g_settings.wifi_ssid) > 0 && (!s_ap_active || s_retry_count < 6)) {
+            s_retry_count++;
+            uint64_t delay_us = (s_retry_count <= 4) ? 500000ULL : 2500000ULL;
+            ESP_LOGW(TAG, "Wi-Fi disconnected (reason=%u). Reconnecting in %lums...",
+                     (unsigned)reason, (unsigned long)(delay_us / 1000ULL));
+            if (s_reconn_timer) {
+                esp_timer_stop(s_reconn_timer);
+                esp_timer_start_once(s_reconn_timer, delay_us);
+            }
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         snprintf(s_ip_str, sizeof(s_ip_str), IPSTR, IP2STR(&event->ip_info.ip));
         ESP_LOGI(TAG, "Wi-Fi connected! Got IP: %s", s_ip_str);
         s_is_connected = true;
+        s_retry_count = 0;
+        if (s_reconn_timer) esp_timer_stop(s_reconn_timer);
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
@@ -50,6 +69,12 @@ esp_err_t wifi_manager_init(void)
 {
     if (s_wifi_event_group == NULL) {
         s_wifi_event_group = xEventGroupCreate();
+        const esp_timer_create_args_t targs = {
+            .callback = &reconnect_timer_cb,
+            .name = "wifi_reconn"
+        };
+        esp_timer_create(&targs, &s_reconn_timer);
+
         ESP_ERROR_CHECK(esp_netif_init());
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         s_sta_netif = esp_netif_create_default_wifi_sta();
@@ -75,6 +100,7 @@ esp_err_t wifi_manager_init(void)
 
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_start());
+        esp_wifi_set_ps(WIFI_PS_NONE);
     }
 
     wifi_manager_connect();
@@ -92,12 +118,24 @@ void wifi_manager_connect(void)
     strncpy((char*)wifi_config.sta.ssid, g_settings.wifi_ssid, sizeof(wifi_config.sta.ssid) - 1);
     strncpy((char*)wifi_config.sta.password, g_settings.wifi_password, sizeof(wifi_config.sta.password) - 1);
     wifi_config.sta.threshold.authmode = (strlen(g_settings.wifi_password) > 0) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    wifi_config.sta.scan_method = WIFI_FAST_SCAN;
+    wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+    wifi_config.sta.pmf_cfg.capable = true;
+    wifi_config.sta.pmf_cfg.required = false;
 
-    ESP_LOGI(TAG, "Setting Wi-Fi configuration for SSID: %s", g_settings.wifi_ssid);
-    esp_wifi_disconnect();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    s_retry_count = 0;
+    ESP_LOGI(TAG, "Connecting to Wi-Fi SSID: %s", g_settings.wifi_ssid);
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     esp_wifi_connect();
+}
+
+void wifi_manager_prepare_reboot(void)
+{
+    s_rebooting = true;
+    if (s_reconn_timer) esp_timer_stop(s_reconn_timer);
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(150));
+    esp_wifi_stop();
 }
 
 esp_err_t wifi_manager_start_ap_portal(void)
@@ -117,6 +155,9 @@ esp_err_t wifi_manager_start_ap_portal(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
+    if (strlen(g_settings.wifi_ssid) > 0) {
+        esp_wifi_connect();
+    }
     ESP_LOGI(TAG, "Wi-Fi Config Portal SoftAP started: SSID='%s' -> http://192.168.4.1", BRIDGE_AP_SSID);
     return ESP_OK;
 }

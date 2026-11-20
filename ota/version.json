@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.7",
+  "version": "v1.4.8",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Adaugat senzor intern temperatura cip ESP32-S3 cu iconita 3D + persistenta ecran aprins pe smartphone (Screen Wake Lock + fallback HTTP)."
+  "notes": "Toate 4 metricile (CPU, RAM, Stocare, Temp) incadrate pe un singur rand, fix comutare Ecran normal -> Ecran activ si reconectare Wi-Fi rapida dupa OTA."
 }

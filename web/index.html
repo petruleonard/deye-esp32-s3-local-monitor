@@ -123,28 +123,31 @@
     }
 
     .sys-metrics {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+      width: 100%;
     }
     .sys-chip {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 8px 2px 6px;
+      justify-content: center;
+      gap: 3px;
+      padding: 3px 5px;
+      min-width: 0;
       border-radius: 999px;
       background: rgba(15, 23, 42, 0.72);
       border: 1px solid rgba(148, 163, 184, 0.22);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 800;
       color: #cbd5e1;
       cursor: default;
       white-space: nowrap;
+      overflow: hidden;
     }
-    .sys-chip svg { flex-shrink: 0; }
-    .sys-chip-lbl { color: #94a3b8; font-weight: 700; font-size: 10px; }
+    .sys-chip svg { flex-shrink: 0; width: 14px; height: 14px; }
+    .sys-chip-lbl { color: #94a3b8; font-weight: 700; font-size: 9px; letter-spacing: -0.2px; }
     .sys-chip-val.ok { color: #34d399; }
     .sys-chip-val.warn { color: #fbbf24; }
     .sys-chip-val.crit { color: #f87171; }
@@ -2019,21 +2022,22 @@
       if (tVal) {
         if (d.esp_temp_ok && typeof d.esp_temp_c === "number" && Number.isFinite(d.esp_temp_c)) {
           const tc = d.esp_temp_c;
-          tVal.innerText = tc.toFixed(1) + " \u00B0C";
+          tVal.innerText = tc.toFixed(1) + "\u00B0C";
           tVal.className = "sys-chip-val " + (tc >= 72 ? "crit" : (tc >= 55 ? "warn" : "ok"));
           if (tChip) tChip.title = `Temperatura interna cip ESP32-S3: ${tc.toFixed(1)} \u00B0C`;
         } else {
-          tVal.innerText = "-- \u00B0C";
+          tVal.innerText = "--\u00B0C";
           tVal.className = "sys-chip-val";
           if (tChip) tChip.title = "Temperatura cip ESP32-S3: indisponibila";
         }
       }
     }
 
-    // Smartphone Screen Persistence (Wake Lock API + muted captureStream video fallback over http://)
+    // Smartphone Screen Persistence (Wake Lock API + reusable muted captureStream video over http://)
     let gKeepScreenOn = (localStorage.getItem("deye_keep_screen") !== "0");
     let gWakeSentinel = null;
     let gWakeVideo = null;
+    let gWakeDrawFn = null;
     let gWakeTimer = null;
 
     function updateWakeBtnUI(active) {
@@ -2054,15 +2058,42 @@
       }
     }
 
-    function stopWakeFallbackVideo() {
+    function pauseWakeFallbackVideo() {
       if (gWakeTimer) { clearInterval(gWakeTimer); gWakeTimer = null; }
       if (gWakeVideo) {
-        try {
-          gWakeVideo.pause();
-          const st = gWakeVideo.srcObject;
-          if (st && st.getTracks) st.getTracks().forEach(t => t.stop());
-          gWakeVideo.srcObject = null;
-        } catch (e) {}
+        try { gWakeVideo.pause(); } catch (e) {}
+      }
+    }
+
+    function initWakeFallbackVideo() {
+      if (gWakeVideo) return gWakeVideo;
+      try {
+        const cv = document.createElement("canvas");
+        cv.width = 2; cv.height = 2;
+        const ctx = cv.getContext("2d");
+        let tick = 0;
+        gWakeDrawFn = () => {
+          if (ctx) {
+            ctx.fillStyle = (tick++ % 2) ? "#010101" : "#000000";
+            ctx.fillRect(0, 0, 2, 2);
+          }
+        };
+        gWakeDrawFn();
+        const cap = cv.captureStream ? cv.captureStream(1) : (cv.mozCaptureStream ? cv.mozCaptureStream(1) : null);
+        if (!cap) return null;
+        const v = document.createElement("video");
+        v.muted = true;
+        v.playsInline = true;
+        v.loop = true;
+        v.setAttribute("playsinline", "");
+        v.setAttribute("muted", "");
+        v.style.cssText = "position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;bottom:0;right:0;";
+        v.srcObject = cap;
+        document.body.appendChild(v);
+        gWakeVideo = v;
+        return gWakeVideo;
+      } catch (e) {
+        return null;
       }
     }
 
@@ -2072,13 +2103,13 @@
           try { await gWakeSentinel.release(); } catch (e) {}
           gWakeSentinel = null;
         }
-        stopWakeFallbackVideo();
+        pauseWakeFallbackVideo();
         updateWakeBtnUI(false);
         return;
       }
       if (document.visibilityState !== "visible") return;
 
-      if ("wakeLock" in navigator && navigator.wakeLock) {
+      if (window.isSecureContext && "wakeLock" in navigator && navigator.wakeLock) {
         try {
           if (!gWakeSentinel) {
             gWakeSentinel = await navigator.wakeLock.request("screen");
@@ -2094,36 +2125,16 @@
         }
       }
 
-      // Fallback for plain HTTP (http://deye.local/) where navigator.wakeLock is restricted
+      // Reusable muted video fallback for plain HTTP (http://deye.local/)
       try {
-        if (!gWakeVideo) {
-          const cv = document.createElement("canvas");
-          cv.width = 2; cv.height = 2;
-          const ctx = cv.getContext("2d");
-          let tick = 0;
-          const draw = () => {
-            if (ctx) {
-              ctx.fillStyle = (tick++ % 2) ? "#010101" : "#000000";
-              ctx.fillRect(0, 0, 2, 2);
-            }
-          };
-          draw();
-          const cap = cv.captureStream ? cv.captureStream(1) : (cv.mozCaptureStream ? cv.mozCaptureStream(1) : null);
-          if (cap) {
-            const v = document.createElement("video");
-            v.muted = true;
-            v.playsInline = true;
-            v.setAttribute("playsinline", "");
-            v.setAttribute("muted", "");
-            v.style.cssText = "position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;bottom:0;right:0;";
-            v.srcObject = cap;
-            document.body.appendChild(v);
-            gWakeVideo = v;
-            gWakeTimer = setInterval(() => { if (document.visibilityState === "visible") draw(); }, 4000);
+        const v = initWakeFallbackVideo();
+        if (v) {
+          if (!gWakeTimer) {
+            gWakeTimer = setInterval(() => {
+              if (document.visibilityState === "visible" && gKeepScreenOn && gWakeDrawFn) gWakeDrawFn();
+            }, 4000);
           }
-        }
-        if (gWakeVideo) {
-          await gWakeVideo.play();
+          await v.play();
           updateWakeBtnUI(true);
           return;
         }
@@ -2134,6 +2145,18 @@
     function toggleKeepScreen() {
       gKeepScreenOn = !gKeepScreenOn;
       localStorage.setItem("deye_keep_screen", gKeepScreenOn ? "1" : "0");
+      if (gKeepScreenOn && !(window.isSecureContext && "wakeLock" in navigator)) {
+        const v = initWakeFallbackVideo();
+        if (v) {
+          if (!gWakeTimer) {
+            gWakeTimer = setInterval(() => {
+              if (document.visibilityState === "visible" && gKeepScreenOn && gWakeDrawFn) gWakeDrawFn();
+            }, 4000);
+          }
+          v.play().then(() => updateWakeBtnUI(true)).catch(() => updateWakeBtnUI(false));
+          return;
+        }
+      }
       ensureWakeLock();
     }
 

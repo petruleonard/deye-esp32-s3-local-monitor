@@ -10,6 +10,7 @@ extern "C" {
 
 esp_err_t wifi_manager_init(void);
 void wifi_manager_connect(void);
+void wifi_manager_prepare_reboot(void);
 bool wifi_manager_is_connected(void);
 const char* wifi_manager_get_ip(void);
 int wifi_manager_get_rssi(void);

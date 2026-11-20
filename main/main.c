@@ -128,8 +128,8 @@ void app_main(void)
         } else if (ota_pending_verify && !wifi_manager_is_connected() && wait_wifi_ms >= 45000) {
             ESP_LOGE(TAG, "Wi-Fi nu s-a conectat in 45s dupa OTA -> ROLLBACK automat!");
             esp_ota_mark_app_invalid_rollback_and_reboot();
-        } else if (!wifi_manager_is_connected() && !wifi_manager_is_ap_active() && wait_wifi_ms >= 15000) {
-            ESP_LOGW(TAG, "Wi-Fi nu s-a conectat in 15s -> pornesc automat portalul Wi-Fi Setup!");
+        } else if (!wifi_manager_is_connected() && !wifi_manager_is_ap_active() && wait_wifi_ms >= 30000) {
+            ESP_LOGW(TAG, "Wi-Fi nu s-a conectat in 30s -> pornesc automat portalul Wi-Fi Setup!");
             wifi_manager_start_ap_portal();
         }
 
