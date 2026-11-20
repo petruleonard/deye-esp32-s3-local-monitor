@@ -22,13 +22,14 @@ static esp_netif_t *s_ap_netif = NULL;
 static bool s_is_connected = false;
 static bool s_ap_active = false;
 static bool s_rebooting = false;
+static volatile bool s_pause_reconnect = false;
 static int s_retry_count = 0;
 static esp_timer_handle_t s_reconn_timer = NULL;
 static char s_ip_str[16] = "0.0.0.0";
 
 static void reconnect_timer_cb(void *arg) {
   (void)arg;
-  if (!s_rebooting && !s_is_connected && strlen(g_settings.wifi_ssid) > 0) {
+  if (!s_rebooting && !s_pause_reconnect && !s_is_connected && strlen(g_settings.wifi_ssid) > 0) {
     esp_wifi_connect();
   }
 }
@@ -47,7 +48,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     strcpy(s_ip_str, "0.0.0.0");
     esp_wifi_set_ps(WIFI_PS_NONE);
     esp_wifi_set_max_tx_power(80);
-    if (!s_rebooting && strlen(g_settings.wifi_ssid) > 0) {
+    if (!s_rebooting && !s_pause_reconnect && strlen(g_settings.wifi_ssid) > 0) {
       s_retry_count++;
       uint64_t delay_us =
           (s_retry_count <= 5)
@@ -207,11 +208,15 @@ bool wifi_manager_test_connect(const char *ssid, const char *password,
 
   ESP_LOGI(TAG, "Testing STA Wi-Fi connection to '%s' while keeping AP open...",
            ssid);
+  s_pause_reconnect = true;
+  if (s_reconn_timer) esp_timer_stop(s_reconn_timer);
   esp_wifi_disconnect();
-  vTaskDelay(pdMS_TO_TICKS(100));
+  vTaskDelay(pdMS_TO_TICKS(150));
   if (esp_wifi_set_config(WIFI_IF_STA, &wifi_config) != ESP_OK) {
+    s_pause_reconnect = false;
     return false;
   }
+  s_pause_reconnect = false;
   esp_wifi_connect();
 
   EventBits_t bits =
@@ -230,8 +235,16 @@ esp_err_t wifi_manager_scan(wifi_ap_record_t *ap_records,
     return ESP_ERR_INVALID_ARG;
   }
 
-  esp_wifi_disconnect();
-  vTaskDelay(pdMS_TO_TICKS(100));
+  for (int w = 0; w < 40 && s_pause_reconnect; w++) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+
+  s_pause_reconnect = true;
+  if (s_reconn_timer) esp_timer_stop(s_reconn_timer);
+  if (!s_is_connected) {
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(150));
+  }
 
   wifi_scan_config_t scan_config = {
       .ssid = NULL,
@@ -239,19 +252,32 @@ esp_err_t wifi_manager_scan(wifi_ap_record_t *ap_records,
       .channel = 0,
       .show_hidden = false,
       .scan_type = WIFI_SCAN_TYPE_ACTIVE,
-      .scan_time.active.min = 100,
-      .scan_time.active.max = 250,
+      .scan_time.active.min = 60,
+      .scan_time.active.max = 180,
   };
 
   ESP_LOGI(TAG, "Starting Wi-Fi scan...");
   esp_err_t ret = esp_wifi_scan_start(&scan_config, true);
+  if (ret == ESP_ERR_WIFI_STATE) {
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(250));
+    ret = esp_wifi_scan_start(&scan_config, true);
+  }
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "esp_wifi_scan_start failed: %s", esp_err_to_name(ret));
+    s_pause_reconnect = false;
+    if (!s_is_connected && strlen(g_settings.wifi_ssid) > 0 && s_reconn_timer) {
+      esp_timer_start_once(s_reconn_timer, 1500000ULL);
+    }
     return ret;
   }
 
   ret = esp_wifi_scan_get_ap_records(max_ap_count, ap_records);
   ESP_LOGI(TAG, "Wi-Fi scan finished, found %u APs", (unsigned)*max_ap_count);
+  s_pause_reconnect = false;
+  if (!s_is_connected && strlen(g_settings.wifi_ssid) > 0 && s_reconn_timer) {
+    esp_timer_start_once(s_reconn_timer, 1500000ULL);
+  }
   return ret;
 }
 
