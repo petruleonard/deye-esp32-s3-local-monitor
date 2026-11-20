@@ -16,7 +16,6 @@
 #include "history_store.h"
 #include "local_web_server.h"
 #include "solarman_v5.h"
-#include "sys_log.h"
 #include "telegram_notify.h"
 #include "wifi_manager.h"
 
@@ -76,9 +75,7 @@ void app_main(void)
 
     ESP_LOGI(TAG, "=== Deye ESP32-S3 Local Web Server ===");
 
-    sys_log_init();
     solarman_v5_init();
-    sys_log_add(SYS_LOG_INFO, "main", "ESP32-S3 pornit (firmware %s)", FW_VERSION);
 
     app_settings_init();
     deye_data_init();

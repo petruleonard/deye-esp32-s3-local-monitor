@@ -2,7 +2,6 @@
 #include "solarman_v5.h"
 #include "app_settings.h"
 #include "deye_data.h"
-#include "sys_log.h"
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -215,12 +214,7 @@ static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
             }
 
             int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-            if (s < 0) {
-                if (n == 0) {
-                    sys_log_add(SYS_LOG_ERR, "discovery", "Eroare socket TCP scan (errno=%d)", errno);
-                }
-                break;
-            }
+            if (s < 0) break;
             h++;
 
             int flags = fcntl(s, F_GETFL, 0);
@@ -333,12 +327,8 @@ int logger_discover_all(discovered_logger_t *out_list, int max_count)
 
     // 3. TCP 8899 subnet scan fallback if none found yet
     if (count == 0) {
-        sys_log_add(SYS_LOG_INFO, "discovery", "UDP 48899 fara raspuns -> pornire scanare TCP 8899...");
         tcp8899_subnet_scan(&sta_ip, out_list, &count, max_count);
     }
-
-    sys_log_add(count > 0 ? SYS_LOG_INFO : SYS_LOG_WARN, "discovery",
-                "Scanare finalizata: %d logger(e) gasite", count);
 
     deye_data_t cur_d;
     deye_data_get(&cur_d);

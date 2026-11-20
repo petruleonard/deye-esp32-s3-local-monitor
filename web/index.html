@@ -54,16 +54,23 @@
     .topbar {
       width: 100%;
       max-width: 1040px;
-      padding: 12px 16px;
+      padding: 10px 16px;
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
       background: rgba(10, 17, 32, 0.55);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .topbar-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .brand {
@@ -116,17 +123,16 @@
     }
 
     .sys-metrics {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
-      margin-left: 6px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .sys-chip {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 2px 7px 2px 5px;
+      padding: 2px 8px 2px 6px;
       border-radius: 999px;
       background: rgba(15, 23, 42, 0.72);
       border: 1px solid rgba(148, 163, 184, 0.22);
@@ -142,119 +148,6 @@
     .sys-chip-val.ok { color: #34d399; }
     .sys-chip-val.warn { color: #fbbf24; }
     .sys-chip-val.crit { color: #f87171; }
-    .log-pill-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 11.5px;
-      font-weight: 800;
-      background: rgba(15, 35, 58, 0.85);
-      color: #38bdf8;
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .log-pill-btn:hover { border-color: #38bdf8; background: rgba(20, 48, 80, 0.95); }
-    .log-pill-btn.has-err { border-color: rgba(239, 68, 68, 0.65); color: #fca5a5; }
-    .log-badge {
-      display: none;
-      padding: 1px 5px;
-      border-radius: 999px;
-      background: #ef4444;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 800;
-      line-height: 1.2;
-    }
-    .log-badge.show { display: inline-block; }
-
-    dialog.sys-dialog {
-      margin: auto;
-      padding: 0;
-      border: none;
-      background: transparent;
-      max-width: calc(100vw - 24px);
-      max-height: 92vh;
-      color: var(--text-main);
-    }
-    dialog.sys-dialog:modal { overscroll-behavior: contain; }
-    dialog.sys-dialog::backdrop {
-      background: rgba(4, 8, 18, 0.72);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      overflow: hidden;
-      overscroll-behavior: contain;
-    }
-    .log-summary-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-    .log-sum-box {
-      background: rgba(15, 23, 42, 0.78);
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      border-radius: 8px;
-      padding: 6px 8px;
-      text-align: center;
-    }
-    .log-sum-lbl { font-size: 10px; color: #94a3b8; font-weight: 700; }
-    .log-sum-val { font-size: 12px; color: #f8fafc; font-weight: 800; margin-top: 2px; }
-    .log-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 8px;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .log-btn {
-      padding: 5px 9px;
-      border-radius: 7px;
-      font-size: 11px;
-      font-weight: 700;
-      background: #0f293a;
-      color: #38bdf8;
-      border: 1px solid #0284c7;
-      cursor: pointer;
-    }
-    .log-btn.active { background: #0284c7; color: #fff; }
-    .log-btn.danger { background: #3f0e16; color: #fca5a5; border-color: #ef4444; }
-    .log-list {
-      background: #070d1a;
-      border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 6px 8px;
-      max-height: 48vh;
-      overflow-y: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.45;
-    }
-    .log-row {
-      display: grid;
-      grid-template-columns: auto auto 1fr;
-      gap: 6px;
-      padding: 5px 4px;
-      border-bottom: 1px solid rgba(30, 41, 59, 0.55);
-      align-items: start;
-    }
-    .log-row:last-child { border-bottom: none; }
-    .log-ts { color: #64748b; white-space: nowrap; }
-    .log-lvl {
-      font-weight: 800;
-      padding: 1px 4px;
-      border-radius: 4px;
-      font-size: 10px;
-      white-space: nowrap;
-    }
-    .log-lvl.INFO { background: rgba(16, 185, 129, 0.16); color: #34d399; }
-    .log-lvl.WARN { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
-    .log-lvl.ERR  { background: rgba(239, 68, 68, 0.22); color: #f87171; }
-    .log-msg { color: #e2e8f0; word-break: break-word; }
-    .log-tag { color: #38bdf8; font-weight: 700; margin-right: 4px; }
 
     .tgl-pill {
       padding: 7px 14px;
@@ -925,93 +818,94 @@
 
   <!-- Top Bar -->
   <div class="topbar">
-    <div class="brand">
-      <div class="brand-dot" id="brandDot" title="Lipsa conexiune cu invertorul"></div>
-      <h1>Deye Solar Monitor</h1>
-      <div class="wifi-bars" id="wifiBars" title="Semnal Wi-Fi: indisponibil">
-        <span class="wifi-bar" style="height:4px"></span>
-        <span class="wifi-bar" style="height:7px"></span>
-        <span class="wifi-bar" style="height:10px"></span>
-        <span class="wifi-bar" style="height:13px"></span>
-        <span class="wifi-bar" style="height:16px"></span>
+    <div class="topbar-row">
+      <div class="brand">
+        <div class="brand-dot" id="brandDot" title="Lipsa conexiune cu invertorul"></div>
+        <h1>Deye Solar Monitor</h1>
+        <div class="wifi-bars" id="wifiBars" title="Semnal Wi-Fi: indisponibil">
+          <span class="wifi-bar" style="height:4px"></span>
+          <span class="wifi-bar" style="height:7px"></span>
+          <span class="wifi-bar" style="height:10px"></span>
+          <span class="wifi-bar" style="height:13px"></span>
+          <span class="wifi-bar" style="height:16px"></span>
+        </div>
       </div>
-      <div class="sys-metrics" id="sysMetrics">
-        <div class="sys-chip" id="cpuChip" title="Incarcare CPU ESP32-S3: --%">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="filter:drop-shadow(0 1px 2px rgba(56,189,248,0.35));">
-            <defs>
-              <linearGradient id="cpuDie" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#38bdf8"/>
-                <stop offset="55%" stop-color="#0284c7"/>
-                <stop offset="100%" stop-color="#0f172a"/>
-              </linearGradient>
-              <linearGradient id="cpuTop" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#94a3b8"/>
-                <stop offset="100%" stop-color="#334155"/>
-              </linearGradient>
-            </defs>
-            <g stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round">
-              <line x1="8" y1="2" x2="8" y2="4.5"/><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="16" y1="2" x2="16" y2="4.5"/>
-              <line x1="8" y1="19.5" x2="8" y2="22"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="16" y1="19.5" x2="16" y2="22"/>
-              <line x1="2" y1="8" x2="4.5" y2="8"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="2" y1="16" x2="4.5" y2="16"/>
-              <line x1="19.5" y1="8" x2="22" y2="8"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="19.5" y1="16" x2="22" y2="16"/>
-            </g>
-            <rect x="4.5" y="4.5" width="15" height="15" rx="3" fill="url(#cpuTop)" stroke="#64748b" stroke-width="0.9"/>
-            <rect x="7" y="7" width="10" height="10" rx="2" fill="url(#cpuDie)" stroke="#bae6fd" stroke-width="0.7"/>
-            <path d="M8 8.5 L15.5 8.5" stroke="rgba(255,255,255,0.45)" stroke-width="0.9" stroke-linecap="round"/>
-          </svg>
-          <span class="sys-chip-lbl">CPU</span>
-          <span class="sys-chip-val" id="cpuPctVal">--%</span>
-        </div>
-        <div class="sys-chip" id="ramChip" title="Memorie RAM ESP32-S3: --%">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="filter:drop-shadow(0 1px 2px rgba(16,185,129,0.35));">
-            <defs>
-              <linearGradient id="ramPcb" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#34d399"/>
-                <stop offset="60%" stop-color="#059669"/>
-                <stop offset="100%" stop-color="#064e3b"/>
-              </linearGradient>
-            </defs>
-            <path d="M3 8 L20 4.5 L21 15 L4 18.5 Z" fill="url(#ramPcb)" stroke="#6ee7b7" stroke-width="0.8"/>
-            <path d="M4 18.5 L21 15 L21 17 L4 20.5 Z" fill="#065f46"/>
-            <rect x="6" y="8.8" width="3.2" height="5.2" rx="0.6" transform="rotate(-11 6 8.8)" fill="#0f172a" stroke="#475569" stroke-width="0.6"/>
-            <rect x="10.5" y="7.9" width="3.2" height="5.2" rx="0.6" transform="rotate(-11 10.5 7.9)" fill="#0f172a" stroke="#475569" stroke-width="0.6"/>
-            <rect x="15" y="7.0" width="3.2" height="5.2" rx="0.6" transform="rotate(-11 15 7.0)" fill="#0f172a" stroke="#475569" stroke-width="0.6"/>
-            <g stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round">
-              <line x1="6.5" y1="18.2" x2="6.5" y2="21"/><line x1="9.5" y1="17.6" x2="9.5" y2="20.4"/>
-              <line x1="12.5" y1="17.0" x2="12.5" y2="19.8"/><line x1="15.5" y1="16.4" x2="15.5" y2="19.2"/>
-              <line x1="18.5" y1="15.8" x2="18.5" y2="18.6"/>
-            </g>
-          </svg>
-          <span class="sys-chip-lbl">RAM</span>
-          <span class="sys-chip-val" id="ramPctVal">--%</span>
-        </div>
-        <div class="sys-chip" id="stoChip" title="Stocare Flash SPIFFS: --%">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="filter:drop-shadow(0 1px 2px rgba(167,139,250,0.35));">
-            <defs>
-              <linearGradient id="stoTop" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#c4b5fd"/>
-                <stop offset="55%" stop-color="#7c3aed"/>
-                <stop offset="100%" stop-color="#4c1d95"/>
-              </linearGradient>
-              <linearGradient id="stoSide" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stop-color="#312e81"/>
-                <stop offset="100%" stop-color="#1e1b4b"/>
-              </linearGradient>
-            </defs>
-            <polygon points="4,8 12,3.5 20,8 12,12.5" fill="url(#stoTop)" stroke="#ddd6fe" stroke-width="0.8"/>
-            <polygon points="4,8 12,12.5 12,20.5 4,16" fill="url(#stoSide)" stroke="#6d28d9" stroke-width="0.7"/>
-            <polygon points="20,8 12,12.5 12,20.5 20,16" fill="#3b0764" stroke="#6d28d9" stroke-width="0.7"/>
-            <circle cx="8" cy="14.2" r="1.1" fill="#38bdf8"/>
-            <line x1="14.2" y1="15.2" x2="18.2" y2="13" stroke="#a78bfa" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          <span class="sys-chip-lbl">STOC</span>
-          <span class="sys-chip-val" id="stoPctVal">--%</span>
-        </div>
+      <div class="status-controls">
+        <button class="mode-btn" id="pwaInstallBtn" style="display:none; border-color:#10b981; color:#34d399;" onclick="installPWA()">&#128242; Instaleaza App</button>
       </div>
     </div>
-    <div class="status-controls">
-      <button type="button" class="log-pill-btn" id="btnTopLogs" onclick="openLogsModal()" title="Jurnal functionare si erori ESP32-S3">&#128203; Jurnal <span class="log-badge" id="topLogErrBadge">0</span></button>
-      <button class="mode-btn" id="pwaInstallBtn" style="display:none; border-color:#10b981; color:#34d399;" onclick="installPWA()">&#128242; Instaleaza App</button>
+    <div class="sys-metrics" id="sysMetrics">
+      <div class="sys-chip" id="cpuChip" title="Incarcare CPU ESP32-S3: --%">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="filter:drop-shadow(0 1px 2px rgba(56,189,248,0.35));">
+          <defs>
+            <linearGradient id="cpuDie" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#38bdf8"/>
+              <stop offset="55%" stop-color="#0284c7"/>
+              <stop offset="100%" stop-color="#0f172a"/>
+            </linearGradient>
+            <linearGradient id="cpuTop" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#94a3b8"/>
+              <stop offset="100%" stop-color="#334155"/>
+            </linearGradient>
+          </defs>
+          <g stroke="#f59e0b" stroke-width="1.6" stroke-linecap="round">
+            <line x1="8" y1="2" x2="8" y2="4.5"/><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="16" y1="2" x2="16" y2="4.5"/>
+            <line x1="8" y1="19.5" x2="8" y2="22"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="16" y1="19.5" x2="16" y2="22"/>
+            <line x1="2" y1="8" x2="4.5" y2="8"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="2" y1="16" x2="4.5" y2="16"/>
+            <line x1="19.5" y1="8" x2="22" y2="8"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="19.5" y1="16" x2="22" y2="16"/>
+          </g>
+          <rect x="4.5" y="4.5" width="15" height="15" rx="3" fill="url(#cpuTop)" stroke="#64748b" stroke-width="0.9"/>
+          <rect x="7" y="7" width="10" height="10" rx="2" fill="url(#cpuDie)" stroke="#bae6fd" stroke-width="0.7"/>
+          <path d="M8 8.5 L15.5 8.5" stroke="rgba(255,255,255,0.45)" stroke-width="0.9" stroke-linecap="round"/>
+        </svg>
+        <span class="sys-chip-lbl">CPU</span>
+        <span class="sys-chip-val" id="cpuPctVal">--%</span>
+      </div>
+      <div class="sys-chip" id="ramChip" title="Memorie RAM ESP32-S3: --%">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="filter:drop-shadow(0 1px 2px rgba(16,185,129,0.35));">
+          <defs>
+            <linearGradient id="ramPcb" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#34d399"/>
+              <stop offset="60%" stop-color="#059669"/>
+              <stop offset="100%" stop-color="#064e3b"/>
+            </linearGradient>
+          </defs>
+          <path d="M3 8 L20 4.5 L21 15 L4 18.5 Z" fill="url(#ramPcb)" stroke="#6ee7b7" stroke-width="0.8"/>
+          <path d="M4 18.5 L21 15 L21 17 L4 20.5 Z" fill="#065f46"/>
+          <rect x="6" y="8.8" width="3.2" height="5.2" rx="0.6" transform="rotate(-11 6 8.8)" fill="#0f172a" stroke="#475569" stroke-width="0.6"/>
+          <rect x="10.5" y="7.9" width="3.2" height="5.2" rx="0.6" transform="rotate(-11 10.5 7.9)" fill="#0f172a" stroke="#475569" stroke-width="0.6"/>
+          <rect x="15" y="7.0" width="3.2" height="5.2" rx="0.6" transform="rotate(-11 15 7.0)" fill="#0f172a" stroke="#475569" stroke-width="0.6"/>
+          <g stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round">
+            <line x1="6.5" y1="18.2" x2="6.5" y2="21"/><line x1="9.5" y1="17.6" x2="9.5" y2="20.4"/>
+            <line x1="12.5" y1="17.0" x2="12.5" y2="19.8"/><line x1="15.5" y1="16.4" x2="15.5" y2="19.2"/>
+            <line x1="18.5" y1="15.8" x2="18.5" y2="18.6"/>
+          </g>
+        </svg>
+        <span class="sys-chip-lbl">RAM</span>
+        <span class="sys-chip-val" id="ramPctVal">--%</span>
+      </div>
+      <div class="sys-chip" id="stoChip" title="Stocare Flash ESP32-S3: --%">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="filter:drop-shadow(0 1px 2px rgba(167,139,250,0.35));">
+          <defs>
+            <linearGradient id="stoTop" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#c4b5fd"/>
+              <stop offset="55%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#4c1d95"/>
+            </linearGradient>
+            <linearGradient id="stoSide" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#312e81"/>
+              <stop offset="100%" stop-color="#1e1b4b"/>
+            </linearGradient>
+          </defs>
+          <polygon points="4,8 12,3.5 20,8 12,12.5" fill="url(#stoTop)" stroke="#ddd6fe" stroke-width="0.8"/>
+          <polygon points="4,8 12,12.5 12,20.5 4,16" fill="url(#stoSide)" stroke="#6d28d9" stroke-width="0.7"/>
+          <polygon points="20,8 12,12.5 12,20.5 20,16" fill="#3b0764" stroke="#6d28d9" stroke-width="0.7"/>
+          <circle cx="8" cy="14.2" r="1.1" fill="#38bdf8"/>
+          <line x1="14.2" y1="15.2" x2="18.2" y2="13" stroke="#a78bfa" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span class="sys-chip-lbl">STOC</span>
+        <span class="sys-chip-val" id="stoPctVal">--%</span>
+      </div>
     </div>
   </div>
 
@@ -1546,7 +1440,6 @@
 
       <button class="apply-btn" style="margin-top:4px;" onclick="saveSettings()">Salveaza Setarile</button>
       <button class="apply-btn" style="margin-top:6px; background:#0f293a; color:#38bdf8; border:1px solid #0284c7;" onclick="testTelegram()">Testeaza Notificare Telegram</button>
-      <button type="button" class="apply-btn" style="margin-top:6px; background:#0f172a; color:#cbd5e1; border:1px solid #475569;" onclick="closeSettingsModal(); openLogsModal();">&#128203; Jurnal Functionare &amp; Erori</button>
       <div style="margin-top:10px; padding-top:10px; border-top:1px solid #334155;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <label class="cfg-lbl" style="margin:0;">Actualizare Firmware prin Wi-Fi (OTA)</label>
@@ -1563,37 +1456,6 @@
       <div class="cfg-msg" id="cfg-status-msg"></div>
     </div>
   </div>
-
-  <!-- Native System Logs Modal -->
-  <dialog id="logsModal" class="sys-dialog" closedby="any" aria-labelledby="logsModalTitle">
-    <div class="modal-card" style="width: 500px; max-width: calc(100vw - 24px);">
-      <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h2 id="logsModalTitle" style="margin:0; font-size:16px; font-weight:800;">&#128203; Jurnal Functionare &amp; Erori</h2>
-        <button type="button" class="back-btn" style="padding:4px 10px; font-size:12px;" autofocus onclick="closeLogsModal()">Inchide</button>
-      </div>
-      <div class="log-summary-grid">
-        <div class="log-sum-box"><div class="log-sum-lbl">CPU</div><div class="log-sum-val" id="logSumCpu">--%</div></div>
-        <div class="log-sum-box"><div class="log-sum-lbl">RAM Intern</div><div class="log-sum-val" id="logSumRam">--%</div></div>
-        <div class="log-sum-box"><div class="log-sum-lbl">Stocare</div><div class="log-sum-val" id="logSumSto">--%</div></div>
-        <div class="log-sum-box"><div class="log-sum-lbl">Uptime</div><div class="log-sum-val" id="logSumUp">--</div></div>
-      </div>
-      <div class="log-toolbar">
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="log-btn active" id="btnLogFilterAll" onclick="setLogFilter('ALL')">Toate</button>
-          <button type="button" class="log-btn" id="btnLogFilterErr" onclick="setLogFilter('ERR')">Erori &amp; Avert.</button>
-        </div>
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="log-btn" onclick="refreshLogs()">&#128260; Reincarca</button>
-          <button type="button" class="log-btn" onclick="copyLogs()">&#128203; Copiaza</button>
-          <button type="button" class="log-btn danger" onclick="clearLogs()">Sterge</button>
-        </div>
-      </div>
-      <div class="log-list" id="logsListBox">
-        <div style="color:#94a3b8; padding:12px; text-align:center;">Se incarca jurnalul...</div>
-      </div>
-      <div id="logsStatusMsg" style="font-size:11px; color:#94a3b8; margin-top:6px; min-height:14px;"></div>
-    </div>
-  </dialog>
 
   <script>
     // Responsive 480x480 stage scaling
@@ -2099,16 +1961,10 @@
         document.getElementById("stoPctVal"),
         document.getElementById("stoChip"),
         sto,
-        sto !== null ? `Stocare Flash SPIFFS utilizata: ${d.storage_used_kb || 0}/${d.storage_total_kb || 0} KB (${sto}%)` : "Stocare: indisponibil"
+        sto !== null
+          ? `Stocare Flash ESP32-S3: ${((d.storage_used_kb || 0) / 1024).toFixed(2)} / ${((d.storage_total_kb || 0) / 1024).toFixed(1)} MB (${sto}%) | Istoric SPIFFS: ${d.spiffs_used_kb || 0}/${d.spiffs_total_kb || 0} KB`
+          : "Stocare: indisponibil"
       );
-      const errCnt = Number(d.log_err_count || 0);
-      const badge = document.getElementById("topLogErrBadge");
-      const btn = document.getElementById("btnTopLogs");
-      if (badge) {
-        badge.innerText = errCnt > 99 ? "99+" : String(errCnt);
-        badge.classList.toggle("show", errCnt > 0);
-      }
-      if (btn) btn.classList.toggle("has-err", errCnt > 0);
     }
 
     let gPollFailStreak = 0;
@@ -2598,7 +2454,7 @@
         }
         const list = data.loggers || [];
         if (!list.length) {
-          box.innerHTML = "<span style='color:#fbbf24;'>Niciun logger Solarman/Deye gasit pe reteaua Wi-Fi. Verifica Jurnalul pentru detalii.</span>";
+          box.innerHTML = "<span style='color:#fbbf24;'>Niciun logger Solarman/Deye gasit pe reteaua Wi-Fi.</span>";
         } else {
           box.innerHTML = "<div style='color:#94a3b8;margin-bottom:6px;'>Alege invertorul detectat:</div>" +
             list.map(x =>
@@ -2614,128 +2470,6 @@
       }
       btn.disabled = false;
     }
-
-    let gLogsData = { entries: [] };
-    let gLogFilter = "ALL";
-    let gLogsPollTimer = null;
-
-    function escHtml(s) {
-      return String(s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]));
-    }
-
-    function fmtUptime(sec) {
-      const s = Number(sec || 0);
-      const d = Math.floor(s / 86400);
-      const h = Math.floor((s % 86400) / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      return d > 0 ? `${d}z ${h}h` : (h > 0 ? `${h}h ${m}m` : `${m}m ${s % 60}s`);
-    }
-
-    function setLogFilter(f) {
-      gLogFilter = f;
-      const bAll = document.getElementById("btnLogFilterAll");
-      const bErr = document.getElementById("btnLogFilterErr");
-      if (bAll) bAll.classList.toggle("active", f === "ALL");
-      if (bErr) bErr.classList.toggle("active", f === "ERR");
-      renderLogs();
-    }
-
-    function renderLogs() {
-      const box = document.getElementById("logsListBox");
-      if (!box) return;
-      const entries = (gLogsData.entries || []).filter(e => gLogFilter === "ALL" || e.lvl === "ERR" || e.lvl === "WARN");
-      if (!entries.length) {
-        box.innerHTML = "<div style='color:#94a3b8; padding:14px; text-align:center;'>Nu exista inregistrari pentru filtrul selectat.</div>";
-        return;
-      }
-      box.innerHTML = entries.map(e =>
-        `<div class="log-row">` +
-        `<span class="log-ts">${escHtml(e.ts)}</span>` +
-        `<span class="log-lvl ${escHtml(e.lvl)}">${escHtml(e.lvl)}</span>` +
-        `<span class="log-msg"><span class="log-tag">[${escHtml(e.tag)}]</span>${escHtml(e.msg)}</span>` +
-        `</div>`
-      ).join("");
-    }
-
-    async function refreshLogs() {
-      const msg = document.getElementById("logsStatusMsg");
-      const pin = localStorage.getItem("deye_local_pin") || "";
-      try {
-        const res = await fetch("/api/logs", { headers: { "X-Admin-Pin": pin } });
-        const d = await res.json();
-        if (!res.ok) {
-          if (res.status === 401) localStorage.removeItem("deye_local_pin");
-          if (msg) msg.innerText = d.error || "Eroare autentificare PIN.";
-          return;
-        }
-        gLogsData = d;
-        document.getElementById("logSumCpu").innerText = `${d.cpu_pct ?? "--"}%`;
-        document.getElementById("logSumRam").innerText = `${d.ram_pct ?? "--"}% (${d.ram_used_kb || 0}K)`;
-        document.getElementById("logSumSto").innerText = `${d.storage_pct ?? "--"}%`;
-        document.getElementById("logSumUp").innerText = fmtUptime(d.uptime_sec);
-        renderLogs();
-        if (msg) msg.innerText = `Afisate ${(d.entries || []).length} evenimente | Erori: ${d.err_count || 0} | Avertismente: ${d.warn_count || 0}`;
-      } catch (e) {
-        if (msg) msg.innerText = "Eroare de conexiune la citirea jurnalului.";
-      }
-    }
-
-    async function openLogsModal() {
-      const pin = await ensureLocalPin();
-      if (pin === null) return;
-      const dlg = document.getElementById("logsModal");
-      if (!dlg) return;
-      if (!dlg.open) dlg.showModal();
-      await refreshLogs();
-      if (gLogsPollTimer) clearInterval(gLogsPollTimer);
-      gLogsPollTimer = setInterval(() => { if (dlg.open) refreshLogs(); }, 3000);
-    }
-
-    function closeLogsModal() {
-      const dlg = document.getElementById("logsModal");
-      if (gLogsPollTimer) { clearInterval(gLogsPollTimer); gLogsPollTimer = null; }
-      if (dlg && dlg.open) dlg.close();
-    }
-
-    async function clearLogs() {
-      const pin = localStorage.getItem("deye_local_pin") || "";
-      try {
-        const res = await fetch("/api/logs/clear", {
-          method: "POST",
-          headers: { "X-Admin-Pin": pin }
-        });
-        if (res.ok) await refreshLogs();
-      } catch (e) {}
-    }
-
-    async function copyLogs() {
-      const msg = document.getElementById("logsStatusMsg");
-      const lines = (gLogsData.entries || []).map(e => `${e.ts} [${e.lvl}] [${e.tag}] ${e.msg}`).join("\n");
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(lines || "(gol)");
-          if (msg) msg.innerText = "Jurnal copiat in clipboard!";
-        }
-      } catch (e) {}
-    }
-
-    (function initDialogLightDismissFallback() {
-      const dlg = document.getElementById("logsModal");
-      if (!dlg) return;
-      dlg.addEventListener("close", () => {
-        if (gLogsPollTimer) { clearInterval(gLogsPollTimer); gLogsPollTimer = null; }
-        dlg.returnValue = "";
-      });
-      if (!("closedBy" in HTMLDialogElement.prototype)) {
-        const outside = (e) => {
-          const r = dlg.getBoundingClientRect();
-          return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
-        };
-        let pressedOutside = false;
-        dlg.addEventListener("pointerdown", (e) => { pressedOutside = outside(e); });
-        dlg.addEventListener("pointerup", (e) => { if (pressedOutside && outside(e)) closeLogsModal(); });
-      }
-    })();
 
     function uploadOTA() {
       const inp = document.getElementById("otaFile");

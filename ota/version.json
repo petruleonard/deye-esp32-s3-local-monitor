@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.5",
+  "version": "v1.4.6",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Fix conectare/deconectare logger si scanare asincrona fara blocare + indicatori 3D CPU/RAM/Stocare si Jurnal de functionare & erori."
+  "notes": "Layout header pe 2 randuri (titlu + Wi-Fi sus, indicatori 3D CPU/RAM/Stocare jos), afisare reala stocare Flash 16MB + eliminare jurnal."
 }

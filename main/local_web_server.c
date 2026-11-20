@@ -6,7 +6,7 @@
 #include "history_store.h"
 #include "logger_discovery.h"
 #include "solarman_v5.h"
-#include "sys_log.h"
+#include "sys_metrics.h"
 #include "telegram_notify.h"
 #include "wifi_manager.h"
 
@@ -327,7 +327,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
     deye_data_t d;
     deye_data_get(&d);
     sys_metrics_t sysm;
-    sys_log_get_metrics(&sysm);
+    sys_metrics_get(&sysm);
 
     char *buf = malloc(2560);
     if (!buf) {
@@ -365,7 +365,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         "\"inv_phases\":%u,\"inv_dev_type\":%u,"
         "\"cpu_pct\":%d,\"ram_pct\":%d,\"ram_used_kb\":%lu,\"ram_total_kb\":%lu,"
         "\"psram_pct\":%d,\"storage_pct\":%d,\"storage_used_kb\":%lu,\"storage_total_kb\":%lu,"
-        "\"uptime_sec\":%lu,\"log_err_count\":%lu,\"log_warn_count\":%lu,"
+        "\"spiffs_used_kb\":%lu,\"spiffs_total_kb\":%lu,"
         "\"wifi_connected\":%s,\"wifi_rssi\":%d,\"logger_connected\":%s,\"status_str\":\"%s\",\"last_update_sec\":%lu"
         "}}",
         d.logger_connected ? "true" : "false",
@@ -395,7 +395,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         (unsigned)(g_settings.inv_phases ? g_settings.inv_phases : 1), (unsigned)g_settings.inv_dev_type,
         sysm.cpu_pct, sysm.ram_pct, (unsigned long)sysm.ram_used_kb, (unsigned long)sysm.ram_total_kb,
         sysm.psram_pct, sysm.storage_pct, (unsigned long)sysm.storage_used_kb, (unsigned long)sysm.storage_total_kb,
-        (unsigned long)sysm.uptime_sec, (unsigned long)sysm.err_count, (unsigned long)sysm.warn_count,
+        (unsigned long)sysm.spiffs_used_kb, (unsigned long)sysm.spiffs_total_kb,
         d.wifi_connected ? "true" : "false", wifi_manager_get_rssi(), d.logger_connected ? "true" : "false",
         esc_status, (unsigned long)d.last_update_sec);
 
@@ -617,7 +617,6 @@ static int s_scan_count = 0;
 
 static void logger_scan_bg_task(void *arg) {
     deye_modbus_set_scan_paused(true);
-    sys_log_add(SYS_LOG_INFO, "discovery", "Scanare automata/manuala invertor pornita...");
 
     discovered_logger_t tmp[4];
     int n = logger_discover_all(tmp, 4);
@@ -641,7 +640,6 @@ static esp_err_t logger_scan_get_handler(httpd_req_t *req) {
         s_logger_scanning = true;
         if (xTaskCreate(logger_scan_bg_task, "logger_scan", 5120, NULL, 4, NULL) != pdPASS) {
             s_logger_scanning = false;
-            sys_log_add(SYS_LOG_ERR, "discovery", "Nu s-a putut crea task-ul de scanare");
             httpd_resp_send_500(req);
             return ESP_FAIL;
         }
@@ -683,30 +681,6 @@ static esp_err_t logger_scan_status_get_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
     free(buf);
-    return ESP_OK;
-}
-
-static esp_err_t logs_get_handler(httpd_req_t *req) {
-    if (!check_admin_pin_hdr(req)) return ESP_OK;
-    char *buf = malloc(16384);
-    if (!buf) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-    sys_log_to_json(buf, 16384);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
-    free(buf);
-    return ESP_OK;
-}
-
-static esp_err_t logs_clear_post_handler(httpd_req_t *req) {
-    if (!check_admin_pin_hdr(req)) return ESP_OK;
-    sys_log_clear();
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_sendstr(req, "{\"ok\":true}");
     return ESP_OK;
 }
 
@@ -1121,7 +1095,6 @@ esp_err_t local_web_server_init(void) {
     esp_err_t err = httpd_start(&server, &config);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Nu s-a putut porni serverul HTTP: %s", esp_err_to_name(err));
-        sys_log_add(SYS_LOG_ERR, "web", "Pornire server HTTP esuata: %s", esp_err_to_name(err));
         return err;
     }
 
@@ -1141,8 +1114,6 @@ esp_err_t local_web_server_init(void) {
         { .uri = "/api/telegram/test",     .method = HTTP_POST, .handler = telegram_test_post_handler },
         { .uri = "/api/logger/scan",       .method = HTTP_GET,  .handler = logger_scan_get_handler },
         { .uri = "/api/logger/scan/status",.method = HTTP_GET,  .handler = logger_scan_status_get_handler },
-        { .uri = "/api/logs",              .method = HTTP_GET,  .handler = logs_get_handler },
-        { .uri = "/api/logs/clear",        .method = HTTP_POST, .handler = logs_clear_post_handler },
         { .uri = "/api/ota",               .method = HTTP_POST, .handler = ota_post_handler },
         { .uri = "/api/ota/check",         .method = HTTP_GET,  .handler = ota_check_get_handler },
         { .uri = "/api/ota/github",        .method = HTTP_POST, .handler = ota_github_post_handler },

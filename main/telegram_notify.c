@@ -1,6 +1,5 @@
 #include "telegram_notify.h"
 #include "app_settings.h"
-#include "sys_log.h"
 #include "wifi_manager.h"
 
 #include "esp_crt_bundle.h"
@@ -73,12 +72,10 @@ esp_err_t telegram_notify_send(const char *text)
 
     if (err != ESP_OK || status < 200 || status >= 300) {
         ESP_LOGW(TAG, "Telegram send failed: err=%s status=%d", esp_err_to_name(err), status);
-        sys_log_add(SYS_LOG_WARN, "telegram", "Eroare trimitere Telegram: %s (HTTP %d)", esp_err_to_name(err), status);
         return (err != ESP_OK) ? err : ESP_FAIL;
     }
 
     ESP_LOGI(TAG, "Mesaj Telegram trimis cu succes (status=%d)", status);
-    sys_log_add(SYS_LOG_INFO, "telegram", "Notificare Telegram trimisa (HTTP %d)", status);
     return ESP_OK;
 }
 

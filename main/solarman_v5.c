@@ -1,5 +1,4 @@
 #include "solarman_v5.h"
-#include "sys_log.h"
 #include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -97,7 +96,6 @@ static esp_err_t solarman_v5_transact_once(const char *ip, uint32_t logger_sn,
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGW(TAG, "socket() failed: errno=%d", errno);
-        sys_log_add(SYS_LOG_ERR, "solarman", "Eroare socket TCP (errno=%d)", errno);
         return ESP_FAIL;
     }
 
@@ -184,9 +182,6 @@ static esp_err_t solarman_v5_transact(const char *ip, uint32_t logger_sn,
     if (err == ESP_ERR_TIMEOUT || err == ESP_FAIL || err == ESP_ERR_INVALID_CRC) {
         vTaskDelay(pdMS_TO_TICKS(120));
         err = solarman_v5_transact_once(ip, logger_sn, mb_frame, mb_len, rx_buf, rx_buf_sz, out_rx_len);
-        if (err != ESP_OK) {
-            sys_log_add(SYS_LOG_WARN, "solarman", "Esueaza tranzactia %s (%s)", ip ? ip : "-", esp_err_to_name(err));
-        }
     }
 
     if (locked) {
