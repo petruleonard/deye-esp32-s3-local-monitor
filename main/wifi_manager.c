@@ -45,6 +45,8 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     uint8_t reason = dis ? dis->reason : 0;
     s_is_connected = false;
     strcpy(s_ip_str, "0.0.0.0");
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    esp_wifi_set_max_tx_power(80);
     if (!s_rebooting && strlen(g_settings.wifi_ssid) > 0) {
       s_retry_count++;
       uint64_t delay_us =
@@ -261,4 +263,52 @@ int wifi_manager_get_rssi(void) {
     return (int)ap_info.rssi;
   }
   return 0;
+}
+
+static int s_cur_tx_power_qdbm = 80;
+
+int wifi_manager_get_tx_dbm(void) {
+  int8_t p = (int8_t)s_cur_tx_power_qdbm;
+  if (esp_wifi_get_max_tx_power(&p) == ESP_OK) {
+    s_cur_tx_power_qdbm = (int)p;
+  }
+  return (s_cur_tx_power_qdbm + 2) / 4;
+}
+
+void wifi_manager_apply_power_mode(void) {
+  if (!g_settings.wifi_eco_mode || !wifi_manager_is_connected()) {
+    esp_wifi_set_ps(WIFI_PS_NONE);
+    if (s_cur_tx_power_qdbm != 80) {
+      if (esp_wifi_set_max_tx_power(80) == ESP_OK) {
+        s_cur_tx_power_qdbm = 80;
+        ESP_LOGI(TAG, "Wi-Fi Normal: WIFI_PS_NONE, TX=20 dBm");
+      }
+    }
+    return;
+  }
+
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+  int rssi = wifi_manager_get_rssi();
+  if (rssi >= 0 || rssi < -100) {
+    return;
+  }
+
+  int target_qdbm = 80; // 20 dBm
+  if (rssi >= -52) {
+    target_qdbm = 34;   // ~8.5 dBm (~7 mW)
+  } else if (rssi >= -60) {
+    target_qdbm = 44;   // 11 dBm (~12.5 mW)
+  } else if (rssi >= -68) {
+    target_qdbm = 56;   // 14 dBm (~25 mW)
+  } else if (rssi >= -75) {
+    target_qdbm = 66;   // 16.5 dBm (~45 mW)
+  }
+
+  if (target_qdbm != s_cur_tx_power_qdbm) {
+    if (esp_wifi_set_max_tx_power((int8_t)target_qdbm) == ESP_OK) {
+      s_cur_tx_power_qdbm = target_qdbm;
+      ESP_LOGI(TAG, "Wi-Fi Mod Eco: WIFI_PS_MIN_MODEM, RSSI=%d dBm -> TX=%d dBm",
+               rssi, (target_qdbm + 2) / 4);
+    }
+  }
 }

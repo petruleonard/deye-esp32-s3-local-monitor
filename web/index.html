@@ -1478,6 +1478,14 @@
         <input class="cfg-inp" type="number" id="cfg-interval" min="5" max="60" step="1" placeholder="5">
       </div>
       <div class="cfg-group">
+        <label class="cfg-lbl">Mod Alimentare Wi-Fi ESP32-S3</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <button type="button" id="btnWifiModeNormal" onclick="setWifiEcoMode(false)" style="padding:8px 6px; border-radius:8px; font-size:12px; font-weight:800; border:1px solid #0284c7; background:#0f293a; color:#38bdf8; cursor:pointer;">&#9889; Normal (Max)</button>
+          <button type="button" id="btnWifiModeEco" onclick="setWifiEcoMode(true)" style="padding:8px 6px; border-radius:8px; font-size:12px; font-weight:800; border:1px solid #334155; background:#0f172a; color:#94a3b8; cursor:pointer;">&#127807; Mod Eco</button>
+        </div>
+        <div id="wifiEcoDesc" style="font-size:10.5px; color:#94a3b8; margin-top:4px;">Normal: putere maxima 20 dBm si viteza maxima fara Modem Sleep.</div>
+      </div>
+      <div class="cfg-group">
         <label class="cfg-lbl">Telegram Bot Token (de la @BotFather)</label>
         <input class="cfg-inp" type="text" id="cfg-tg-token" placeholder="ex: 123456789:ABCdef...">
       </div>
@@ -1961,7 +1969,7 @@
       }
     }
 
-    function updateWifiSignal(online, rssi) {
+    function updateWifiSignal(online, rssi, eco, txDbm) {
       const box = document.getElementById("wifiBars");
       if (!box) return;
       const bars = box.querySelectorAll(".wifi-bar");
@@ -1972,7 +1980,8 @@
         else if (rssi >= -80) active = 3;
         else if (rssi >= -87) active = 2;
         else active = 1;
-        box.title = `Semnal Wi-Fi ESP32-S3: ${rssi} dBm (${active}/5)`;
+        const modeTxt = eco ? `Mod Eco (TX ${txDbm || 20} dBm)` : `Normal (TX ${txDbm || 20} dBm)`;
+        box.title = `Semnal Wi-Fi ESP32-S3: ${rssi} dBm (${active}/5) | ${modeTxt}`;
       } else {
         box.title = "Semnal Wi-Fi ESP32-S3: fara semnal";
       }
@@ -2182,7 +2191,12 @@
         gPollFailStreak = 0;
         gPinRequired = !!json.pin_required;
         updatePinLockUI(json.pin_locked_sec || 0);
-        updateWifiSignal(!!(json.data && json.data.wifi_connected !== false), json.data ? json.data.wifi_rssi : 0);
+        updateWifiSignal(
+          !!(json.data && json.data.wifi_connected !== false),
+          json.data ? json.data.wifi_rssi : 0,
+          !!(json.data && json.data.wifi_eco),
+          json.data ? json.data.wifi_tx_dbm : 20
+        );
         if (json && json.data) updateSysMetrics(json.data);
         const connected = !!(json.online && json.data && json.data.logger_connected !== false);
         if (connected) {
@@ -2571,6 +2585,7 @@
           ? `Logger activ: ${modelStr}${cfg.logger_ip || "-"} | MAC: ${cfg.logger_mac || "-"} | SN: ${cfg.logger_sn}`
           : "Niciun logger selectat — apasa Scaneaza.";
         document.getElementById("cfg-interval").value = Math.max(5, Math.round((cfg.send_interval_ms || 5000) / 1000));
+        updateWifiEcoButtons(!!cfg.wifi_eco_mode);
         document.getElementById("cfg-tg-token").value = cfg.tg_bot_token || "";
         document.getElementById("cfg-tg-chat").value = cfg.tg_chat_id || "";
         document.getElementById("fwVersionBadge").innerText = cfg.fw_version || "v1.0.0";
@@ -2585,6 +2600,35 @@
       document.getElementById("settingsModal").classList.remove("open");
     }
 
+    let gWifiEcoMode = false;
+
+    function updateWifiEcoButtons(eco) {
+      gWifiEcoMode = !!eco;
+      const bn = document.getElementById("btnWifiModeNormal");
+      const be = document.getElementById("btnWifiModeEco");
+      const desc = document.getElementById("wifiEcoDesc");
+      if (bn) {
+        bn.style.borderColor = !gWifiEcoMode ? "#38bdf8" : "#334155";
+        bn.style.background = !gWifiEcoMode ? "#0f293a" : "#0f172a";
+        bn.style.color = !gWifiEcoMode ? "#38bdf8" : "#94a3b8";
+      }
+      if (be) {
+        be.style.borderColor = gWifiEcoMode ? "#10b981" : "#334155";
+        be.style.background = gWifiEcoMode ? "#064e3b" : "#0f172a";
+        be.style.color = gWifiEcoMode ? "#34d399" : "#94a3b8";
+      }
+      if (desc) {
+        desc.innerText = gWifiEcoMode
+          ? "Mod Eco: Modem Sleep + modulare automata TX Wi-Fi (8–20 dBm) dupa distanta fata de router."
+          : "Normal: putere maxima 20 dBm si raspuns instantaneu fara Modem Sleep.";
+      }
+    }
+
+    async function setWifiEcoMode(eco) {
+      updateWifiEcoButtons(eco);
+      await saveSettings();
+    }
+
     async function saveSettings() {
       const msg = document.getElementById("cfg-status-msg");
       const pin = localStorage.getItem("deye_local_pin") || "";
@@ -2594,6 +2638,7 @@
         logger_ip: document.getElementById("cfg-logger-ip").value.trim(),
         logger_sn: parseInt(document.getElementById("cfg-logger-sn").value, 10) || 0,
         send_interval_ms: sec * 1000,
+        wifi_eco_mode: gWifiEcoMode,
         tg_bot_token: document.getElementById("cfg-tg-token").value.trim(),
         tg_chat_id: document.getElementById("cfg-tg-chat").value.trim(),
       };

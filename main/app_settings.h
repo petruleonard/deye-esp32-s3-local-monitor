@@ -31,6 +31,7 @@ typedef struct {
     int8_t bat_freeze_temp_c;
     uint8_t inv_phases;
     uint16_t inv_dev_type;
+    bool wifi_eco_mode;
 } app_settings_t;
 
 // Global settings instance

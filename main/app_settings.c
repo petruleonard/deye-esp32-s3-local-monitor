@@ -109,6 +109,7 @@ esp_err_t app_settings_init(void)
     if (nvs_get_i8(nvs, "bat_frz_t", &i8v) == ESP_OK) g_settings.bat_freeze_temp_c = i8v;
     if (nvs_get_u8(nvs, "inv_ph", &u8v) == ESP_OK) g_settings.inv_phases = u8v;
     nvs_get_u16(nvs, "inv_dt", &g_settings.inv_dev_type);
+    if (nvs_get_u8(nvs, "wifi_eco", &u8v) == ESP_OK) g_settings.wifi_eco_mode = (u8v == 1);
 
     nvs_close(nvs);
 
@@ -151,6 +152,7 @@ esp_err_t app_settings_save(const app_settings_t *settings)
     nvs_set_i8(nvs, "bat_frz_t", settings->bat_freeze_temp_c);
     nvs_set_u8(nvs, "inv_ph", settings->inv_phases);
     nvs_set_u16(nvs, "inv_dt", settings->inv_dev_type);
+    nvs_set_u8(nvs, "wifi_eco", settings->wifi_eco_mode ? 1 : 0);
 
     err = nvs_commit(nvs);
     nvs_close(nvs);

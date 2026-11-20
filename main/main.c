@@ -121,6 +121,7 @@ void app_main(void)
         if (!sntp_started && wifi_manager_is_connected()) {
             history_store_start_sntp();
             sntp_started = true;
+            wifi_manager_apply_power_mode();
             if (auto_ap_opened && g_settings.is_configured) {
                 wifi_manager_stop_ap_portal();
                 auto_ap_opened = false;
@@ -153,6 +154,9 @@ void app_main(void)
 
         vTaskDelay(pdMS_TO_TICKS(2000));
         wait_wifi_ms += 2000;
+        if ((wait_wifi_ms % 16000) == 0 && wifi_manager_is_connected()) {
+            wifi_manager_apply_power_mode();
+        }
     }
 }
 

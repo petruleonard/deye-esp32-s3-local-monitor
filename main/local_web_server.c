@@ -369,7 +369,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         "\"cpu_pct\":%d,\"ram_pct\":%d,\"ram_used_kb\":%lu,\"ram_total_kb\":%lu,"
         "\"psram_pct\":%d,\"storage_pct\":%d,\"storage_used_kb\":%lu,\"storage_total_kb\":%lu,"
         "\"spiffs_used_kb\":%lu,\"spiffs_total_kb\":%lu,\"esp_temp_c\":%.1f,\"esp_temp_ok\":%s,"
-        "\"wifi_connected\":%s,\"wifi_rssi\":%d,\"logger_connected\":%s,\"status_str\":\"%s\",\"last_update_sec\":%lu"
+        "\"wifi_connected\":%s,\"wifi_rssi\":%d,\"wifi_eco\":%s,\"wifi_tx_dbm\":%d,\"logger_connected\":%s,\"status_str\":\"%s\",\"last_update_sec\":%lu"
         "}}",
         d.logger_connected ? "true" : "false",
         pin_req ? "true" : "false",
@@ -400,7 +400,9 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         sysm.psram_pct, sysm.storage_pct, (unsigned long)sysm.storage_used_kb, (unsigned long)sysm.storage_total_kb,
         (unsigned long)sysm.spiffs_used_kb, (unsigned long)sysm.spiffs_total_kb,
         sysm.esp_temp_c, sysm.esp_temp_ok ? "true" : "false",
-        wifi_manager_is_connected() ? "true" : "false", wifi_manager_get_rssi(), d.logger_connected ? "true" : "false",
+        wifi_manager_is_connected() ? "true" : "false", wifi_manager_get_rssi(),
+        g_settings.wifi_eco_mode ? "true" : "false", wifi_manager_get_tx_dbm(),
+        d.logger_connected ? "true" : "false",
         esc_status, (unsigned long)d.last_update_sec);
 
     httpd_resp_set_type(req, "application/json");
@@ -503,7 +505,7 @@ static esp_err_t history_clear_post_handler(httpd_req_t *req) {
 
 static esp_err_t config_get_handler(httpd_req_t *req) {
     if (!check_admin_pin_hdr(req)) return ESP_OK;
-    char buf[448];
+    char buf[512];
     char esc_mac[32], esc_ip[32], esc_tok[128], esc_chat[48];
     json_escape(g_settings.logger_mac, esc_mac, sizeof(esc_mac));
     json_escape(g_settings.logger_ip, esc_ip, sizeof(esc_ip));
@@ -515,11 +517,12 @@ static esp_err_t config_get_handler(httpd_req_t *req) {
 
     snprintf(buf, sizeof(buf),
              "{\"logger_mac\":\"%s\",\"logger_ip\":\"%s\",\"logger_sn\":%lu,"
-             "\"inv_phases\":%u,\"inv_dev_type\":%u,"
+             "\"inv_phases\":%u,\"inv_dev_type\":%u,\"wifi_eco_mode\":%s,"
              "\"send_interval_ms\":%lu,\"tg_bot_token\":\"%s\",\"tg_chat_id\":\"%s\","
              "\"fw_version\":\"%s (%s)\"}",
              esc_mac, esc_ip, (unsigned long)g_settings.logger_sn,
              (unsigned)g_settings.inv_phases, (unsigned)g_settings.inv_dev_type,
+             g_settings.wifi_eco_mode ? "true" : "false",
              (unsigned long)g_settings.send_interval_ms, esc_tok, esc_chat,
              FW_VERSION, part_lbl);
 
@@ -528,6 +531,8 @@ static esp_err_t config_get_handler(httpd_req_t *req) {
     httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
+
+static bool json_get_bool(const char *json, const char *key, bool *out);
 
 static esp_err_t config_post_handler(httpd_req_t *req) {
     if (!check_admin_pin_hdr(req)) return ESP_OK;
@@ -548,8 +553,13 @@ static esp_err_t config_post_handler(httpd_req_t *req) {
     if (json_get_u32(body, "send_interval_ms", &intv) && intv >= 5000 && intv <= 60000) {
         cfg.send_interval_ms = intv;
     }
+    bool eco = cfg.wifi_eco_mode;
+    if (json_get_bool(body, "wifi_eco_mode", &eco)) {
+        cfg.wifi_eco_mode = eco;
+    }
 
     app_settings_save(&cfg);
+    wifi_manager_apply_power_mode();
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, "{\"ok\":true}", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;

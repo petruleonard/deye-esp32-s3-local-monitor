@@ -14,6 +14,8 @@ void wifi_manager_prepare_reboot(void);
 bool wifi_manager_is_connected(void);
 const char* wifi_manager_get_ip(void);
 int wifi_manager_get_rssi(void);
+void wifi_manager_apply_power_mode(void);
+int wifi_manager_get_tx_dbm(void);
 
 esp_err_t wifi_manager_start_ap_portal(void);
 void wifi_manager_stop_ap_portal(void);
