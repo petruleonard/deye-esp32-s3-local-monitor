@@ -14,7 +14,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
   - **Recunoaștere automată a tipului de invertor** din registrul `0` (**Deye Monofazat** `1-Phase` sau **Deye Trifazat** `3-Phase`) și memorare permanentă în NVS pentru citirea exactă a registrelor Modbus RTU peste Solarman V5.
 - **Dashboard Live & PWA pentru Smartphone / PC**:
   - Diagramă animată în timp real cu fluxurile energetice (**Panouri Fotovoltaice**, **Baterie**, **Rețea**, **Consum Casă**) și mini-grafice pe 24h.
-  - Indicator vizual cu 5 trepte pentru puterea semnalului Wi-Fi al plăcii ESP32-S3 (`dBm`) + rând dedicat cu indicatori live **3D SVG** pentru **CPU %**, **RAM %**, **Stocare Flash %** (calculată din memoria Flash reală de 16 MB) și **Temperatura internă a cipului ESP32-S3 (°C)**.
+  - Indicator vizual cu 5 trepte pentru puterea semnalului Wi-Fi al plăcii ESP32-S3 (`dBm`) + rând dedicat cu indicatori live **3D SVG** pentru **CPU %**, **RAM %**, **Stocare OTA %** (ocuparea reală a slotului OTA activ de `3.00 MB`) și **Temperatura internă a cipului ESP32-S3 (°C)**.
   - **Persistență ecran aprins pe smartphone** (buton **☀️ Ecran activ** în bara de sus cu Screen Wake Lock + fallback automat pentru `http://deye.local/`).
   - Se poate instala ca aplicație nativă pe telefon (**PWA — Add to Home Screen**), cu suport pentru gestul de întoarcere (**swipe de la marginea ecranului**) și **pull-to-refresh (swipe de sus în jos)**.
 - **Program Încărcare Baterie — Mod Vară (`0 A`)**:
@@ -83,7 +83,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
    - *(Notă Windows SmartScreen: Pentru că fișierul este descărcat de pe internet, Windows poate afișa la primul dublu-click o fereastră albastră **"Windows protected your PC" / "Windows v-a protejat PC-ul"**. Apasă pe **"More info" / "Mai multe informații"** și apoi pe butonul **"Run anyway" / "Rulați oricum"**).*
    - Se deschide automat fereastra de instalare care detectează Python, instalează `esptool` (dacă nu există deja) și afișează lista porturilor `COM` găsite pe PC.
    - Apasă direct tasta **`Enter`** pentru a folosi portul `COM` detectat automat (sau tastează portul dorit, de ex. `COM7`, și apasă `Enter`).
-   - Scriptul scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.5.1` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de siguranță `ota_1` la `0x320000` pentru rollback automat):
+   - Scriptul scrie automat bootloader-ul (cu `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`), tabelul de partiții și firmware-ul `v1.5.2` în **ambele partiții OTA** (`ota_0` la `0x20000` și copia de siguranță `ota_1` la `0x320000` pentru rollback automat):
    ```bash
    python -m esptool --chip esp32s3 -b 460800 write_flash --flash-mode dio --flash-size 16MB ^
      0x0 build/bootloader/bootloader.bin ^
@@ -92,7 +92,7 @@ Aplicație complet autonomă de monitorizare în timp real, istoric energetic, c
      0x20000 build/deye_esp32_s3_bridge.bin ^
      0x320000 build/deye_esp32_s3_bridge.bin
    ```
-   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.5.1 incarcat cu succes`** până o închizi de la butonul **Close (`X`)**.
+   - La final, fereastra rămâne deschisă cu mesajul **`[SUCCES] Firmware v1.5.2 incarcat cu succes`** până o închizi de la butonul **Close (`X`)**.
 
 #### Varianta B — Compilare din codul sursă (ESP-IDF v5.x / v6.x)
 ```bash

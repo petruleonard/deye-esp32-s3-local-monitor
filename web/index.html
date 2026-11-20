@@ -2023,8 +2023,8 @@
         document.getElementById("stoChip"),
         sto,
         sto !== null
-          ? `Stocare Flash ESP32-S3: ${((d.storage_used_kb || 0) / 1024).toFixed(2)} / ${((d.storage_total_kb || 0) / 1024).toFixed(1)} MB (${sto}%) | Istoric SPIFFS: ${d.spiffs_used_kb || 0}/${d.spiffs_total_kb || 0} KB`
-          : "Stocare: indisponibil"
+          ? `Slot OTA activ: ${((d.storage_used_kb || 0) / 1024).toFixed(2)} / ${((d.storage_total_kb || 0) / 1024).toFixed(2)} MB (${sto}%) | Istoric SPIFFS: ${d.spiffs_used_kb || 0}/${d.spiffs_total_kb || 0} KB`
+          : "Stocare OTA: indisponibil"
       );
       const tChip = document.getElementById("tempChip");
       const tVal = document.getElementById("espTempVal");

@@ -1,5 +1,5 @@
 {
-  "version": "v1.5.1",
+  "version": "v1.5.2",
   "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
-  "notes": "Adaugat comutator Mod Eco / Normal in Setari Sistem: Modem Sleep + modulare automata a puterii TX Wi-Fi (8-20 dBm) dupa semnalul routerului."
+  "notes": "Indicatorul STOC % afiseaza ocuparea reala a slotului OTA activ (~41% din 3.00 MB) in locul chip-ului fizic de 16 MB."
 }

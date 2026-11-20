@@ -5,9 +5,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/temperature_sensor.h"
-#include "esp_flash.h"
 #include "esp_heap_caps.h"
 #include "esp_image_format.h"
+#include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_timer.h"
 
@@ -77,46 +77,30 @@ static int compute_cpu_load_pct(void)
     return s_last_cpu_pct;
 }
 
-static uint64_t get_static_flash_used_bytes(uint64_t *out_flash_total_bytes)
+static uint64_t get_running_ota_used_bytes(uint64_t *out_ota_total_bytes)
 {
     static bool s_cached = false;
-    static uint64_t s_flash_total = 0;
-    static uint64_t s_static_used = 0;
+    static uint64_t s_ota_total = 3ULL * 1024ULL * 1024ULL;
+    static uint64_t s_ota_used = 0;
 
     if (!s_cached) {
-        uint32_t chip_sz = 0;
-        if (esp_flash_get_size(NULL, &chip_sz) == ESP_OK && chip_sz > 0) {
-            s_flash_total = (uint64_t)chip_sz;
-        } else {
-            s_flash_total = 16ULL * 1024ULL * 1024ULL;
-        }
-
-        // Bootloader + Partition Table + NVS + OTAdata + PHY fixed footprint up to 0x20000 (~128 KB max, ~72 KB active)
-        uint64_t used = 72ULL * 1024ULL;
-
-        esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, NULL);
-        while (it != NULL) {
-            const esp_partition_t *part = esp_partition_get(it);
-            if (part) {
-                uint8_t magic = 0;
-                if (esp_partition_read(part, 0, &magic, 1) == ESP_OK && magic == 0xE9) {
-                    esp_partition_pos_t pos = { .offset = part->address, .size = part->size };
-                    esp_image_metadata_t meta;
-                    if (esp_image_get_metadata(&pos, &meta) == ESP_OK && meta.image_len > 0) {
-                        used += (uint64_t)meta.image_len;
-                    }
+        const esp_partition_t *running = esp_ota_get_running_partition();
+        if (running) {
+            if (running->size > 0) s_ota_total = (uint64_t)running->size;
+            uint8_t magic = 0;
+            if (esp_partition_read(running, 0, &magic, 1) == ESP_OK && magic == 0xE9) {
+                esp_partition_pos_t pos = { .offset = running->address, .size = running->size };
+                esp_image_metadata_t meta;
+                if (esp_image_get_metadata(&pos, &meta) == ESP_OK && meta.image_len > 0) {
+                    s_ota_used = (uint64_t)meta.image_len;
                 }
             }
-            it = esp_partition_next(it);
         }
-        esp_partition_iterator_release(it);
-
-        s_static_used = used;
         s_cached = true;
     }
 
-    if (out_flash_total_bytes) *out_flash_total_bytes = s_flash_total;
-    return s_static_used;
+    if (out_ota_total_bytes) *out_ota_total_bytes = s_ota_total;
+    return s_ota_used;
 }
 
 void sys_metrics_get(sys_metrics_t *out)
@@ -140,23 +124,22 @@ void sys_metrics_get(sys_metrics_t *out)
                      ? (int)(((ps_total - ps_free) * 100ULL + (ps_total / 2U)) / ps_total)
                      : 0;
 
-    uint64_t flash_total_bytes = 0;
-    uint64_t flash_used_bytes = get_static_flash_used_bytes(&flash_total_bytes);
+    uint64_t ota_total_bytes = 0;
+    uint64_t ota_used_bytes = get_running_ota_used_bytes(&ota_total_bytes);
 
     size_t st_total = 0, st_used = 0;
     if (history_store_get_storage_info(&st_total, &st_used)) {
         out->spiffs_total_kb = (uint32_t)(st_total / 1024U);
         out->spiffs_used_kb  = (uint32_t)(st_used / 1024U);
-        flash_used_bytes += (uint64_t)st_used;
     }
 
-    if (flash_used_bytes > flash_total_bytes) flash_used_bytes = flash_total_bytes;
-    out->storage_total_kb = (uint32_t)(flash_total_bytes / 1024ULL);
-    out->storage_used_kb  = (uint32_t)(flash_used_bytes / 1024ULL);
-    out->storage_pct = (flash_total_bytes > 0)
-                       ? (int)((flash_used_bytes * 100ULL + (flash_total_bytes / 2ULL)) / flash_total_bytes)
+    if (ota_used_bytes > ota_total_bytes) ota_used_bytes = ota_total_bytes;
+    out->storage_total_kb = (uint32_t)(ota_total_bytes / 1024ULL);
+    out->storage_used_kb  = (uint32_t)(ota_used_bytes / 1024ULL);
+    out->storage_pct = (ota_total_bytes > 0)
+                       ? (int)((ota_used_bytes * 100ULL + (ota_total_bytes / 2ULL)) / ota_total_bytes)
                        : 0;
-    if (out->storage_pct < 1 && flash_used_bytes > 0) out->storage_pct = 1;
+    if (out->storage_pct < 1 && ota_used_bytes > 0) out->storage_pct = 1;
 
     if (!s_tsens) sys_metrics_init();
     if (s_tsens) {

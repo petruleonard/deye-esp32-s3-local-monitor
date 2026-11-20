@@ -7,7 +7,7 @@ cd /d "%SCRIPT_DIR%"
 
 echo ============================================================
 echo  Instalare Firmware Deye Solar Monitor (ESP32-S3 N16R8)
-echo  Versiune: v1.5.1 (cu Dual-OTA si Rollback Automat)
+echo  Versiune: v1.5.2 (cu Dual-OTA si Rollback Automat)
 echo ============================================================
 echo.
 
@@ -100,7 +100,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [SUCCES] Firmware v1.5.1 incarcat cu succes pe %COM_PORT% ^(cu suport Dual-OTA Rollback^)!
+echo [SUCCES] Firmware v1.5.2 incarcat cu succes pe %COM_PORT% ^(cu suport Dual-OTA Rollback^)!
 echo Conecteaza-te acum la Wi-Fi "Deye-ESP32-Setup" ^(http://192.168.4.1^) pentru configurare.
 echo.
 pause
