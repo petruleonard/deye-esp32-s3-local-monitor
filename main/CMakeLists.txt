@@ -8,6 +8,7 @@ idf_component_register(
         "deye_data.c"
         "deye_modbus.c"
         "history_store.c"
+        "sys_log.c"
         "local_web_server.c"
         "telegram_notify.c"
     INCLUDE_DIRS

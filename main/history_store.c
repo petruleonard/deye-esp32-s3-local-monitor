@@ -280,3 +280,9 @@ void history_store_chart_json(char *out_json, size_t out_sz)
     snprintf(out_json + pos, out_sz - pos, "]}");
     xSemaphoreGive(s_hist_mutex);
 }
+
+bool history_store_get_storage_info(size_t *total_bytes, size_t *used_bytes)
+{
+    if (!s_spiffs_ok || !total_bytes || !used_bytes) return false;
+    return (esp_spiffs_info("storage", total_bytes, used_bytes) == ESP_OK);
+}

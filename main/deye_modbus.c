@@ -1,5 +1,6 @@
 #include "deye_modbus.h"
 #include "history_store.h"
+#include "sys_log.h"
 #include "telegram_notify.h"
 #include "solarman_v5.h"
 #include "logger_discovery.h"
@@ -13,6 +14,12 @@
 #include "esp_timer.h"
 
 static const char *TAG = "deye_modbus";
+static volatile bool s_scan_paused = false;
+
+void deye_modbus_set_scan_paused(bool paused)
+{
+    s_scan_paused = paused;
+}
 
 static void try_rediscover_logger(void)
 {
@@ -30,6 +37,8 @@ static void try_rediscover_logger(void)
             app_settings_save(&next);
             ESP_LOGI(TAG, "Auto-detected logger IP=%s (MAC=%s, SN=%lu)",
                      g_settings.logger_ip, g_settings.logger_mac, (unsigned long)g_settings.logger_sn);
+            sys_log_add(SYS_LOG_INFO, "modbus", "Auto-redetectat logger IP=%s SN=%lu",
+                        g_settings.logger_ip, (unsigned long)g_settings.logger_sn);
         }
     }
 }
@@ -226,11 +235,19 @@ static void deye_poller_task(void *pvParameters)
     uint16_t block2[44]; // Regs 70 to 113 (0x0046 to 0x0071)
     bool initial_disc_done = false;
     int fail_streak = 0;
+    bool was_connected = false;
 
     while (1) {
         uint32_t poll_ms = g_settings.send_interval_ms;
         if (poll_ms < 5000 || poll_ms > 60000) poll_ms = 5000;
-        vTaskDelay(pdMS_TO_TICKS(poll_ms));
+        for (uint32_t waited = 0; waited < poll_ms; waited += 250) {
+            vTaskDelay(pdMS_TO_TICKS(250));
+            if (s_scan_paused) break;
+        }
+        if (s_scan_paused) {
+            vTaskDelay(pdMS_TO_TICKS(250));
+            continue;
+        }
 
         deye_data_t cur;
         deye_data_get(&cur);
@@ -284,15 +301,27 @@ static void deye_poller_task(void *pvParameters)
         if (s_is_three_phase) {
             esp_err_t err3 = poll_three_phase(&cur);
             if (err3 != ESP_OK) {
-                cur.logger_connected = false;
                 fail_streak++;
-                if (fail_streak >= 3) {
+                if (fail_streak >= 2) {
+                    cur.logger_connected = false;
+                    if (was_connected) {
+                        sys_log_add(SYS_LOG_ERR, "modbus", "Conexiune pierduta 3F (%s)", esp_err_to_name(err3));
+                        was_connected = false;
+                    }
+                    snprintf(cur.status_str, sizeof(cur.status_str), "Eroare citire 3F (%s)", esp_err_to_name(err3));
+                } else {
+                    sys_log_add(SYS_LOG_WARN, "modbus", "Eroare tranzitorie 3F (%s), se reincearca", esp_err_to_name(err3));
+                }
+                if (fail_streak >= 4) {
                     fail_streak = 0;
                     s_type_detected = false;
                     try_rediscover_logger();
                 }
-                snprintf(cur.status_str, sizeof(cur.status_str), "Eroare citire 3F (%s)", esp_err_to_name(err3));
             } else {
+                if (!was_connected) {
+                    sys_log_add(SYS_LOG_INFO, "modbus", "Conectat la invertor Deye 3F (%s)", g_settings.logger_ip);
+                    was_connected = true;
+                }
                 fail_streak = 0;
                 manage_battery_charge_schedule(&cur);
             }
@@ -305,15 +334,29 @@ static void deye_poller_task(void *pvParameters)
         esp_err_t err1 = solarman_v5_read_registers(g_settings.logger_ip, g_settings.logger_sn,
                                                    150, 48, block1);
         if (err1 != ESP_OK) {
-            cur.logger_connected = false;
             fail_streak++;
-            if (fail_streak >= 3) {
+            if (fail_streak >= 2) {
+                cur.logger_connected = false;
+                if (was_connected) {
+                    sys_log_add(SYS_LOG_ERR, "modbus", "Conexiune pierduta cu loggerul %s (%s)",
+                                g_settings.logger_ip, esp_err_to_name(err1));
+                    was_connected = false;
+                }
+                snprintf(cur.status_str, sizeof(cur.status_str), "Eroare citire Solarman (%s)", esp_err_to_name(err1));
+            } else {
+                sys_log_add(SYS_LOG_WARN, "modbus", "Intrerupere scurta citire %s (%s)",
+                            g_settings.logger_ip, esp_err_to_name(err1));
+            }
+            if (fail_streak >= 4) {
                 fail_streak = 0;
                 try_rediscover_logger();
             }
-            snprintf(cur.status_str, sizeof(cur.status_str), "Eroare citire Solarman (%s)", esp_err_to_name(err1));
             deye_data_update(&cur);
             continue;
+        }
+        if (!was_connected) {
+            sys_log_add(SYS_LOG_INFO, "modbus", "Conectat la invertor Deye 1F (%s)", g_settings.logger_ip);
+            was_connected = true;
         }
         fail_streak = 0;
 

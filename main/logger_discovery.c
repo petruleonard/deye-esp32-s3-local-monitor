@@ -2,6 +2,7 @@
 #include "solarman_v5.h"
 #include "app_settings.h"
 #include "deye_data.h"
+#include "sys_log.h"
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -195,9 +196,9 @@ static bool udp_unicast_query(const char *target_ip, char *out_mac, size_t out_m
 static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
                                 discovered_logger_t *list, int *count, int max_count)
 {
-    const int BATCH = 5;
-    int socks[5];
-    uint32_t ips[5];
+    const int BATCH = 8;
+    int socks[8];
+    uint32_t ips[8];
 
     uint32_t h = 1;
     while (h < 255 && *count < max_count) {
@@ -214,7 +215,12 @@ static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
             }
 
             int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-            if (s < 0) break;
+            if (s < 0) {
+                if (n == 0) {
+                    sys_log_add(SYS_LOG_ERR, "discovery", "Eroare socket TCP scan (errno=%d)", errno);
+                }
+                break;
+            }
             h++;
 
             int flags = fcntl(s, F_GETFL, 0);
@@ -242,7 +248,7 @@ static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
             break;
         }
 
-        struct timeval tv = { .tv_sec = 0, .tv_usec = 160000 };
+        struct timeval tv = { .tv_sec = 0, .tv_usec = 110000 };
         int ready = select(max_fd + 1, NULL, &wfds, NULL, &tv);
         for (int i = 0; i < n; i++) {
             bool open = false;
@@ -327,8 +333,12 @@ int logger_discover_all(discovered_logger_t *out_list, int max_count)
 
     // 3. TCP 8899 subnet scan fallback if none found yet
     if (count == 0) {
+        sys_log_add(SYS_LOG_INFO, "discovery", "UDP 48899 fara raspuns -> pornire scanare TCP 8899...");
         tcp8899_subnet_scan(&sta_ip, out_list, &count, max_count);
     }
+
+    sys_log_add(count > 0 ? SYS_LOG_INFO : SYS_LOG_WARN, "discovery",
+                "Scanare finalizata: %d logger(e) gasite", count);
 
     deye_data_t cur_d;
     deye_data_get(&cur_d);

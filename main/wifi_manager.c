@@ -1,6 +1,7 @@
 #include "wifi_manager.h"
 #include "app_settings.h"
 #include "app_config.h"
+#include "sys_log.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -28,10 +29,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         // Connection is triggered explicitly by wifi_manager_connect() after setting config.
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t *dis = (wifi_event_sta_disconnected_t *)event_data;
+        uint8_t reason = dis ? dis->reason : 0;
         s_is_connected = false;
         strcpy(s_ip_str, "0.0.0.0");
+        sys_log_add(SYS_LOG_WARN, "wifi", "Wi-Fi deconectat (motiv=%u)", (unsigned)reason);
         if (!s_ap_active && strlen(g_settings.wifi_ssid) > 0) {
-            ESP_LOGW(TAG, "Wi-Fi disconnected. Reconnecting in 3s...");
+            ESP_LOGW(TAG, "Wi-Fi disconnected (reason=%u). Reconnecting in 3s...", (unsigned)reason);
             vTaskDelay(pdMS_TO_TICKS(3000));
             esp_wifi_connect();
         }
@@ -39,6 +43,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         snprintf(s_ip_str, sizeof(s_ip_str), IPSTR, IP2STR(&event->ip_info.ip));
         ESP_LOGI(TAG, "Wi-Fi connected! Got IP: %s", s_ip_str);
+        sys_log_add(SYS_LOG_INFO, "wifi", "Wi-Fi conectat, IP: %s", s_ip_str);
         s_is_connected = true;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }

@@ -2,9 +2,11 @@
 #include "app_config.h"
 #include "app_settings.h"
 #include "deye_data.h"
+#include "deye_modbus.h"
 #include "history_store.h"
 #include "logger_discovery.h"
 #include "solarman_v5.h"
+#include "sys_log.h"
 #include "telegram_notify.h"
 #include "wifi_manager.h"
 
@@ -324,8 +326,10 @@ static esp_err_t save_post_handler(httpd_req_t *req) {
 static esp_err_t telemetry_get_handler(httpd_req_t *req) {
     deye_data_t d;
     deye_data_get(&d);
+    sys_metrics_t sysm;
+    sys_log_get_metrics(&sysm);
 
-    char *buf = malloc(2048);
+    char *buf = malloc(2560);
     if (!buf) {
         httpd_resp_send_500(req);
         return ESP_FAIL;
@@ -339,7 +343,7 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
     int lock_sec = get_pin_lock_remaining_sec(get_client_ip_u32(req));
     bool pin_req = (g_settings.admin_pin[0] != '\0');
 
-    snprintf(buf, 2048,
+    snprintf(buf, 2560,
         "{\"online\":%s,\"pin_required\":%s,\"pin_locked_sec\":%d,\"data\":{"
         "\"pv_power_w\":%ld,\"pv1_power_w\":%ld,\"pv2_power_w\":%ld,\"pv3_power_w\":%ld,\"pv4_power_w\":%ld,"
         "\"pv1_volts\":%.1f,\"pv2_volts\":%.1f,\"pv_today_kwh\":%.2f,\"pv_total_kwh\":%.2f,"
@@ -359,6 +363,9 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         "\"load_peak_today_kw\":%.2f,\"load_avg_hourly_kw\":%.2f,\"load_pf\":%.2f,"
         "\"load_source_str\":\"%s\",\"inverter_status\":%u,\"inverter_temp_c\":%.1f,"
         "\"inv_phases\":%u,\"inv_dev_type\":%u,"
+        "\"cpu_pct\":%d,\"ram_pct\":%d,\"ram_used_kb\":%lu,\"ram_total_kb\":%lu,"
+        "\"psram_pct\":%d,\"storage_pct\":%d,\"storage_used_kb\":%lu,\"storage_total_kb\":%lu,"
+        "\"uptime_sec\":%lu,\"log_err_count\":%lu,\"log_warn_count\":%lu,"
         "\"wifi_connected\":%s,\"wifi_rssi\":%d,\"logger_connected\":%s,\"status_str\":\"%s\",\"last_update_sec\":%lu"
         "}}",
         d.logger_connected ? "true" : "false",
@@ -386,6 +393,9 @@ static esp_err_t telemetry_get_handler(httpd_req_t *req) {
         d.load_peak_today_kw, d.load_avg_hourly_kw, d.load_pf,
         esc_src, (unsigned)d.inverter_status, d.inverter_temp_c,
         (unsigned)(g_settings.inv_phases ? g_settings.inv_phases : 1), (unsigned)g_settings.inv_dev_type,
+        sysm.cpu_pct, sysm.ram_pct, (unsigned long)sysm.ram_used_kb, (unsigned long)sysm.ram_total_kb,
+        sysm.psram_pct, sysm.storage_pct, (unsigned long)sysm.storage_used_kb, (unsigned long)sysm.storage_total_kb,
+        (unsigned long)sysm.uptime_sec, (unsigned long)sysm.err_count, (unsigned long)sysm.warn_count,
         d.wifi_connected ? "true" : "false", wifi_manager_get_rssi(), d.logger_connected ? "true" : "false",
         esc_status, (unsigned long)d.last_update_sec);
 
@@ -600,10 +610,51 @@ static esp_err_t telegram_test_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static volatile bool s_logger_scanning = false;
+static volatile bool s_logger_scan_done = false;
+static discovered_logger_t s_scan_results[4];
+static int s_scan_count = 0;
+
+static void logger_scan_bg_task(void *arg) {
+    deye_modbus_set_scan_paused(true);
+    sys_log_add(SYS_LOG_INFO, "discovery", "Scanare automata/manuala invertor pornita...");
+
+    discovered_logger_t tmp[4];
+    int n = logger_discover_all(tmp, 4);
+    if (n > 0) {
+        memcpy(s_scan_results, tmp, sizeof(discovered_logger_t) * (size_t)n);
+    }
+    s_scan_count = n;
+    s_logger_scan_done = true;
+    s_logger_scanning = false;
+
+    deye_modbus_set_scan_paused(false);
+    vTaskDelete(NULL);
+}
+
 static esp_err_t logger_scan_get_handler(httpd_req_t *req) {
     if (!check_admin_pin_hdr(req)) return ESP_OK;
-    discovered_logger_t found[4];
-    int n = logger_discover_all(found, 4);
+
+    if (!s_logger_scanning) {
+        s_logger_scan_done = false;
+        s_scan_count = 0;
+        s_logger_scanning = true;
+        if (xTaskCreate(logger_scan_bg_task, "logger_scan", 5120, NULL, 4, NULL) != pdPASS) {
+            s_logger_scanning = false;
+            sys_log_add(SYS_LOG_ERR, "discovery", "Nu s-a putut crea task-ul de scanare");
+            httpd_resp_send_500(req);
+            return ESP_FAIL;
+        }
+    }
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_sendstr(req, "{\"scanning\":true,\"done\":false,\"loggers\":[]}");
+    return ESP_OK;
+}
+
+static esp_err_t logger_scan_status_get_handler(httpd_req_t *req) {
+    if (!check_admin_pin_hdr(req)) return ESP_OK;
 
     char *buf = malloc(1024);
     if (!buf) {
@@ -611,14 +662,19 @@ static esp_err_t logger_scan_get_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
-    size_t pos = snprintf(buf, 1024, "{\"loggers\":[");
+    bool scanning = s_logger_scanning;
+    bool done = s_logger_scan_done;
+    int n = done ? s_scan_count : 0;
+    size_t pos = snprintf(buf, 1024, "{\"scanning\":%s,\"done\":%s,\"loggers\":[",
+                          scanning ? "true" : "false", done ? "true" : "false");
     for (int i = 0; i < n; i++) {
         char esc_model[48];
-        json_escape(found[i].model, esc_model, sizeof(esc_model));
+        json_escape(s_scan_results[i].model, esc_model, sizeof(esc_model));
         pos += snprintf(buf + pos, 1024 - pos,
                         "%s{\"ip\":\"%s\",\"mac\":\"%s\",\"sn\":%lu,\"model\":\"%s\"}",
                         (i > 0) ? "," : "",
-                        found[i].ip, found[i].mac, (unsigned long)found[i].sn, esc_model);
+                        s_scan_results[i].ip, s_scan_results[i].mac,
+                        (unsigned long)s_scan_results[i].sn, esc_model);
         if (pos > 896) break;
     }
     snprintf(buf + pos, 1024 - pos, "]}");
@@ -627,6 +683,30 @@ static esp_err_t logger_scan_get_handler(httpd_req_t *req) {
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
     free(buf);
+    return ESP_OK;
+}
+
+static esp_err_t logs_get_handler(httpd_req_t *req) {
+    if (!check_admin_pin_hdr(req)) return ESP_OK;
+    char *buf = malloc(16384);
+    if (!buf) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    sys_log_to_json(buf, 16384);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+    free(buf);
+    return ESP_OK;
+}
+
+static esp_err_t logs_clear_post_handler(httpd_req_t *req) {
+    if (!check_admin_pin_hdr(req)) return ESP_OK;
+    sys_log_clear();
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_sendstr(req, "{\"ok\":true}");
     return ESP_OK;
 }
 
@@ -1028,39 +1108,47 @@ static void captive_dns_task(void *arg) {
 
 esp_err_t local_web_server_init(void) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 24;
+    config.max_uri_handlers = 28;
+    config.max_open_sockets = 8;
+    config.backlog_conn = 8;
+    config.lru_purge_enable = true;
     config.stack_size = 10240;
-    config.recv_wait_timeout = 15;
+    config.recv_wait_timeout = 10;
+    config.send_wait_timeout = 10;
     config.uri_match_fn = httpd_uri_match_wildcard;
 
     httpd_handle_t server = NULL;
     esp_err_t err = httpd_start(&server, &config);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Nu s-a putut porni serverul HTTP: %s", esp_err_to_name(err));
+        sys_log_add(SYS_LOG_ERR, "web", "Pornire server HTTP esuata: %s", esp_err_to_name(err));
         return err;
     }
 
     const httpd_uri_t uris[] = {
-        { .uri = "/",                  .method = HTTP_GET,  .handler = root_get_handler },
-        { .uri = "/setup",             .method = HTTP_GET,  .handler = setup_get_handler },
-        { .uri = "/scan",              .method = HTTP_GET,  .handler = scan_get_handler },
-        { .uri = "/save",              .method = HTTP_POST, .handler = save_post_handler },
-        { .uri = "/api/telemetry",     .method = HTTP_GET,  .handler = telemetry_get_handler },
-        { .uri = "/api/history",       .method = HTTP_GET,  .handler = history_get_handler },
-        { .uri = "/api/chart",         .method = HTTP_GET,  .handler = chart_get_handler },
-        { .uri = "/api/chart/fasttest",.method = HTTP_POST, .handler = chart_fasttest_post_handler },
-        { .uri = "/api/history/clear", .method = HTTP_POST, .handler = history_clear_post_handler },
-        { .uri = "/api/config",        .method = HTTP_GET,  .handler = config_get_handler },
-        { .uri = "/api/config",        .method = HTTP_POST, .handler = config_post_handler },
-        { .uri = "/api/battery/config",.method = HTTP_POST, .handler = battery_config_post_handler },
-        { .uri = "/api/telegram/test", .method = HTTP_POST, .handler = telegram_test_post_handler },
-        { .uri = "/api/logger/scan",   .method = HTTP_GET,  .handler = logger_scan_get_handler },
-        { .uri = "/api/ota",           .method = HTTP_POST, .handler = ota_post_handler },
-        { .uri = "/api/ota/check",     .method = HTTP_GET,  .handler = ota_check_get_handler },
-        { .uri = "/api/ota/github",    .method = HTTP_POST, .handler = ota_github_post_handler },
-        { .uri = "/api/ota/status",    .method = HTTP_GET,  .handler = ota_status_get_handler },
-        { .uri = "/api/pin/verify",    .method = HTTP_POST, .handler = pin_verify_post_handler },
-        { .uri = "/*",                 .method = HTTP_GET,  .handler = captive_redirect_handler },
+        { .uri = "/",                      .method = HTTP_GET,  .handler = root_get_handler },
+        { .uri = "/setup",                 .method = HTTP_GET,  .handler = setup_get_handler },
+        { .uri = "/scan",                  .method = HTTP_GET,  .handler = scan_get_handler },
+        { .uri = "/save",                  .method = HTTP_POST, .handler = save_post_handler },
+        { .uri = "/api/telemetry",         .method = HTTP_GET,  .handler = telemetry_get_handler },
+        { .uri = "/api/history",           .method = HTTP_GET,  .handler = history_get_handler },
+        { .uri = "/api/chart",             .method = HTTP_GET,  .handler = chart_get_handler },
+        { .uri = "/api/chart/fasttest",    .method = HTTP_POST, .handler = chart_fasttest_post_handler },
+        { .uri = "/api/history/clear",     .method = HTTP_POST, .handler = history_clear_post_handler },
+        { .uri = "/api/config",            .method = HTTP_GET,  .handler = config_get_handler },
+        { .uri = "/api/config",            .method = HTTP_POST, .handler = config_post_handler },
+        { .uri = "/api/battery/config",    .method = HTTP_POST, .handler = battery_config_post_handler },
+        { .uri = "/api/telegram/test",     .method = HTTP_POST, .handler = telegram_test_post_handler },
+        { .uri = "/api/logger/scan",       .method = HTTP_GET,  .handler = logger_scan_get_handler },
+        { .uri = "/api/logger/scan/status",.method = HTTP_GET,  .handler = logger_scan_status_get_handler },
+        { .uri = "/api/logs",              .method = HTTP_GET,  .handler = logs_get_handler },
+        { .uri = "/api/logs/clear",        .method = HTTP_POST, .handler = logs_clear_post_handler },
+        { .uri = "/api/ota",               .method = HTTP_POST, .handler = ota_post_handler },
+        { .uri = "/api/ota/check",         .method = HTTP_GET,  .handler = ota_check_get_handler },
+        { .uri = "/api/ota/github",        .method = HTTP_POST, .handler = ota_github_post_handler },
+        { .uri = "/api/ota/status",        .method = HTTP_GET,  .handler = ota_status_get_handler },
+        { .uri = "/api/pin/verify",        .method = HTTP_POST, .handler = pin_verify_post_handler },
+        { .uri = "/*",                     .method = HTTP_GET,  .handler = captive_redirect_handler },
     };
 
     for (size_t i = 0; i < sizeof(uris) / sizeof(uris[0]); i++) {

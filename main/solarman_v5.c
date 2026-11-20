@@ -1,15 +1,29 @@
 #include "solarman_v5.h"
+#include "sys_log.h"
+#include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 
 static const char *TAG = "solarman_v5";
 #define SOLARMAN_PORT 8899
 
 static uint16_t s_seq = 1;
+static SemaphoreHandle_t s_solarman_mutex = NULL;
+
+void solarman_v5_init(void)
+{
+    if (!s_solarman_mutex) {
+        s_solarman_mutex = xSemaphoreCreateMutex();
+    }
+}
 
 static uint16_t modbus_crc16(const uint8_t *buf, size_t len)
 {
@@ -37,9 +51,9 @@ static uint8_t v5_checksum(const uint8_t *buf, size_t start, size_t end)
     return (uint8_t)(sum & 0xFF);
 }
 
-static esp_err_t solarman_v5_transact(const char *ip, uint32_t logger_sn,
-                                      const uint8_t *mb_frame, uint16_t mb_len,
-                                      uint8_t *rx_buf, size_t rx_buf_sz, int *out_rx_len)
+static esp_err_t solarman_v5_transact_once(const char *ip, uint32_t logger_sn,
+                                           const uint8_t *mb_frame, uint16_t mb_len,
+                                           uint8_t *rx_buf, size_t rx_buf_sz, int *out_rx_len)
 {
     if (!ip || strlen(ip) == 0 || logger_sn == 0 || !mb_frame || mb_len == 0) {
         return ESP_ERR_INVALID_ARG;
@@ -81,11 +95,20 @@ static esp_err_t solarman_v5_transact(const char *ip, uint32_t logger_sn,
     tx_buf[idx++] = 0x15;
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if (sock < 0) return ESP_FAIL;
+    if (sock < 0) {
+        ESP_LOGW(TAG, "socket() failed: errno=%d", errno);
+        sys_log_add(SYS_LOG_ERR, "solarman", "Eroare socket TCP (errno=%d)", errno);
+        return ESP_FAIL;
+    }
 
-    struct timeval timeout = { .tv_sec = 2, .tv_usec = 500000 };
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    struct timeval rcv_tv = { .tv_sec = 2, .tv_usec = 800000 };
+    struct timeval snd_tv = { .tv_sec = 2, .tv_usec = 0 };
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &rcv_tv, sizeof(rcv_tv));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &snd_tv, sizeof(snd_tv));
+    int nodelay = 1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+    struct linger lg = { .l_onoff = 1, .l_linger = 0 };
+    setsockopt(sock, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg));
 
     struct sockaddr_in dest_addr = {0};
     dest_addr.sin_addr.s_addr = inet_addr(ip);
@@ -93,25 +116,83 @@ static esp_err_t solarman_v5_transact(const char *ip, uint32_t logger_sn,
     dest_addr.sin_port = htons(SOLARMAN_PORT);
 
     if (connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) != 0) {
+        int e = errno;
         close(sock);
+        ESP_LOGW(TAG, "connect(%s:8899) failed: errno=%d", ip, e);
         return ESP_FAIL;
     }
 
     if (send(sock, tx_buf, idx, 0) < 0) {
+        int e = errno;
         close(sock);
+        ESP_LOGW(TAG, "send() failed: errno=%d", e);
         return ESP_FAIL;
     }
 
-    int rx_len = recv(sock, rx_buf, rx_buf_sz, 0);
+    int total_rx = 0;
+    int expected_len = 0;
+    while (total_rx < (int)rx_buf_sz) {
+        int r = recv(sock, rx_buf + total_rx, rx_buf_sz - (size_t)total_rx, 0);
+        if (r < 0) {
+            break;
+        }
+        if (r == 0) {
+            break;
+        }
+        total_rx += r;
+        if (expected_len == 0 && total_rx >= 3 && rx_buf[0] == 0xA5) {
+            uint16_t pl = (uint16_t)rx_buf[1] | ((uint16_t)rx_buf[2] << 8);
+            if (pl >= 14 && pl < (uint16_t)rx_buf_sz) {
+                expected_len = 11 + (int)pl + 2;
+            }
+        }
+        if (expected_len > 0 && total_rx >= expected_len) {
+            total_rx = expected_len;
+            break;
+        }
+    }
     close(sock);
 
-    if (rx_len < 29) return ESP_ERR_TIMEOUT;
-    if (rx_buf[0] != 0xA5 || rx_buf[rx_len - 1] != 0x15) return ESP_ERR_INVALID_RESPONSE;
-    if (rx_buf[rx_len - 2] != v5_checksum(rx_buf, 1, rx_len - 2)) return ESP_ERR_INVALID_CRC;
-    if (rx_buf[4] != 0x15) return ESP_ERR_INVALID_RESPONSE;
+    if (total_rx < 29) {
+        ESP_LOGW(TAG, "Solarman recv timeout/short (%d bytes)", total_rx);
+        return ESP_ERR_TIMEOUT;
+    }
+    if (rx_buf[0] != 0xA5 || rx_buf[total_rx - 1] != 0x15) {
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+    if (rx_buf[total_rx - 2] != v5_checksum(rx_buf, 1, total_rx - 2)) {
+        return ESP_ERR_INVALID_CRC;
+    }
+    if (rx_buf[4] != 0x15) {
+        return ESP_ERR_INVALID_RESPONSE;
+    }
 
-    *out_rx_len = rx_len;
+    *out_rx_len = total_rx;
     return ESP_OK;
+}
+
+static esp_err_t solarman_v5_transact(const char *ip, uint32_t logger_sn,
+                                      const uint8_t *mb_frame, uint16_t mb_len,
+                                      uint8_t *rx_buf, size_t rx_buf_sz, int *out_rx_len)
+{
+    if (!s_solarman_mutex) {
+        solarman_v5_init();
+    }
+    bool locked = (s_solarman_mutex && xSemaphoreTake(s_solarman_mutex, pdMS_TO_TICKS(6000)) == pdTRUE);
+
+    esp_err_t err = solarman_v5_transact_once(ip, logger_sn, mb_frame, mb_len, rx_buf, rx_buf_sz, out_rx_len);
+    if (err == ESP_ERR_TIMEOUT || err == ESP_FAIL || err == ESP_ERR_INVALID_CRC) {
+        vTaskDelay(pdMS_TO_TICKS(120));
+        err = solarman_v5_transact_once(ip, logger_sn, mb_frame, mb_len, rx_buf, rx_buf_sz, out_rx_len);
+        if (err != ESP_OK) {
+            sys_log_add(SYS_LOG_WARN, "solarman", "Esueaza tranzactia %s (%s)", ip ? ip : "-", esp_err_to_name(err));
+        }
+    }
+
+    if (locked) {
+        xSemaphoreGive(s_solarman_mutex);
+    }
+    return err;
 }
 
 esp_err_t solarman_v5_read_registers(const char *ip, uint32_t logger_sn,

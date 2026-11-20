@@ -19,6 +19,7 @@ extern "C" {
  * @param out_regs Buffer to store received 16-bit registers (must be at least num_regs * sizeof(uint16_t))
  * @return ESP_OK on success, error code otherwise
  */
+void solarman_v5_init(void);
 esp_err_t solarman_v5_read_registers(const char *ip, uint32_t logger_sn,
                                     uint16_t start_reg, uint16_t num_regs,
                                     uint16_t *out_regs);
