@@ -1,5 +1,5 @@
 {
   "version": "v1.5.4",
-  "url": "https://raw.githubusercontent.com/petruleonard/deye-esp32-s3-local-monitor/main/build/deye_esp32_s3_bridge.bin",
+  "url": "https://github.com/petruleonard/deye-esp32-s3-local-monitor/releases/download/v1.5.4/deye_esp32_s3_bridge_v1.5.4.bin",
   "notes": "Autodetectie avansata Solarman (UDP 48899 + TCP 8899 prioritizat 650ms + HTTP :80 + fallback Wi-Fi AP_<SN> sortat dupa RSSI) + configurare manuala optionala IP & SN in Setari."
 }
