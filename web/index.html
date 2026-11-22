@@ -1471,8 +1471,19 @@
         <div id="scanResults" style="display:none; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:8px; font-size:12px;"></div>
       </div>
       <input type="hidden" id="cfg-logger-mac">
-      <input type="hidden" id="cfg-logger-ip">
-      <input type="hidden" id="cfg-logger-sn">
+      <details style="margin-bottom:10px; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:8px 10px;">
+        <summary style="cursor:pointer; font-size:11.5px; color:#94a3b8; font-weight:700;">&#9881; Configurare manuala logger (optional, cazuri extreme)</summary>
+        <div style="margin-top:8px;">
+          <div class="cfg-group" style="margin-bottom:6px;">
+            <label class="cfg-lbl">IP Logger Solarman</label>
+            <input class="cfg-inp" type="text" id="cfg-logger-ip" placeholder="ex: 192.168.68.101">
+          </div>
+          <div class="cfg-group" style="margin-bottom:0;">
+            <label class="cfg-lbl">Serial Number (SN) Logger</label>
+            <input class="cfg-inp" type="number" id="cfg-logger-sn" placeholder="ex: 3116957403">
+          </div>
+        </div>
+      </details>
       <div class="cfg-group">
         <label class="cfg-lbl">Interval Citire ESP32-S3 (secunde, minim 5s)</label>
         <input class="cfg-inp" type="number" id="cfg-interval" min="5" max="60" step="1" placeholder="5">

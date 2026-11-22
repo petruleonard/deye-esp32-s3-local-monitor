@@ -23,6 +23,7 @@ bool logger_discover_by_mac(const char *target_mac, uint32_t target_sn,
 
 // Discovers all Solarman loggers on the LAN and probes Modbus reg 0 for model type.
 int logger_discover_all(discovered_logger_t *out_list, int max_count);
+int logger_discover_all_ex(discovered_logger_t *out_list, int max_count, bool blind_mode);
 
 #ifdef __cplusplus
 }

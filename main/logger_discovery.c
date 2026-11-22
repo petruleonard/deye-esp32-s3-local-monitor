@@ -2,6 +2,7 @@
 #include "solarman_v5.h"
 #include "app_settings.h"
 #include "deye_data.h"
+#include "wifi_manager.h"
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -12,12 +13,14 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
 
 static const char *TAG = "logger_disc";
 #define SOLARMAN_DISC_PORT 48899
 #define SOLARMAN_TCP_PORT  8899
+#define SOLARMAN_HTTP_PORT 80
 
 static const char *DISC_CMDS[] = {
     "WIFIKIT-214028-READ",
@@ -73,7 +76,8 @@ static bool parse_disc_reply(char *rx_buf, const struct sockaddr_in *src_addr,
 }
 
 static void add_discovered_unique(discovered_logger_t *list, int *count, int max_count,
-                                  const char *ip, const char *mac, uint32_t sn)
+                                  const char *ip, const char *mac, uint32_t sn,
+                                  const char *method_tag, char tags[][24])
 {
     if (*count >= max_count) return;
     for (int i = 0; i < *count; i++) {
@@ -88,11 +92,15 @@ static void add_discovered_unique(discovered_logger_t *list, int *count, int max
     strncpy(list[*count].ip, ip, sizeof(list[*count].ip) - 1);
     strncpy(list[*count].mac, mac, sizeof(list[*count].mac) - 1);
     list[*count].sn = sn;
+    if (tags && method_tag) {
+        snprintf(tags[*count], 24, "%s", method_tag);
+    }
     (*count)++;
 }
 
 static void udp_broadcast_discover(const esp_netif_ip_info_t *sta_ip,
-                                   discovered_logger_t *list, int *count, int max_count)
+                                   discovered_logger_t *list, int *count, int max_count,
+                                   char tags[][24])
 {
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) return;
@@ -102,7 +110,7 @@ static void udp_broadcast_discover(const esp_netif_ip_info_t *sta_ip,
     setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
-    struct timeval tv = { .tv_sec = 0, .tv_usec = 600000 };
+    struct timeval tv = { .tv_sec = 0, .tv_usec = 350000 };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     struct sockaddr_in bind_addr = {0};
@@ -124,8 +132,8 @@ static void udp_broadcast_discover(const esp_netif_ip_info_t *sta_ip,
     bcast_global.sin_port = htons(SOLARMAN_DISC_PORT);
     bcast_global.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
-    for (int round = 0; round < 3; round++) {
-        const char *cmd = (round < 2) ? DISC_CMDS[0] : DISC_CMDS[1];
+    for (int round = 0; round < 2; round++) {
+        const char *cmd = DISC_CMDS[round];
         size_t cmd_len = strlen(cmd);
         if (has_sub_bcast) {
             sendto(sock, cmd, cmd_len, 0, (struct sockaddr *)&bcast_sub, sizeof(bcast_sub));
@@ -145,7 +153,7 @@ static void udp_broadcast_discover(const esp_netif_ip_info_t *sta_ip,
             uint32_t sn = 0;
             if (parse_disc_reply(rx_buf, &src_addr, ip, sizeof(ip), mac, sizeof(mac), &sn)) {
                 ESP_LOGI(TAG, "UDP 48899 discovered: IP=%s, MAC=%s, SN=%lu", ip, mac, (unsigned long)sn);
-                add_discovered_unique(list, count, max_count, ip, mac, sn);
+                add_discovered_unique(list, count, max_count, ip, mac, sn, "UDP", tags);
             }
         }
         if (*count > 0 && round >= 1) break;
@@ -159,7 +167,7 @@ static bool udp_unicast_query(const char *target_ip, char *out_mac, size_t out_m
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0) return false;
 
-    struct timeval tv = { .tv_sec = 0, .tv_usec = 450000 };
+    struct timeval tv = { .tv_sec = 0, .tv_usec = 350000 };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     struct sockaddr_in dst = {0};
@@ -170,8 +178,8 @@ static bool udp_unicast_query(const char *target_ip, char *out_mac, size_t out_m
         return false;
     }
 
-    for (int attempt = 0; attempt < 3; attempt++) {
-        const char *cmd = (attempt < 2) ? DISC_CMDS[0] : DISC_CMDS[1];
+    for (int attempt = 0; attempt < 1; attempt++) {
+        const char *cmd = DISC_CMDS[attempt];
         sendto(sock, cmd, strlen(cmd), 0, (struct sockaddr *)&dst, sizeof(dst));
 
         char rx_buf[160];
@@ -192,30 +200,174 @@ static bool udp_unicast_query(const char *target_ip, char *out_mac, size_t out_m
     return false;
 }
 
-static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
-                                discovered_logger_t *list, int *count, int max_count)
+static bool http80_query_sn(const char *target_ip, uint32_t *out_sn)
 {
-    const int BATCH = 8;
-    int socks[8];
-    uint32_t ips[8];
+    if (!target_ip || !out_sn) return false;
+    *out_sn = 0;
 
-    uint32_t h = 1;
-    while (h < 255 && *count < max_count) {
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sock < 0) return false;
+
+    struct timeval tv = { .tv_sec = 0, .tv_usec = 350000 };
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+    struct sockaddr_in dst = {0};
+    dst.sin_family = AF_INET;
+    dst.sin_port = htons(SOLARMAN_HTTP_PORT);
+    if (inet_pton(AF_INET, target_ip, &dst.sin_addr) != 1) {
+        close(sock);
+        return false;
+    }
+
+    if (connect(sock, (struct sockaddr *)&dst, sizeof(dst)) != 0) {
+        close(sock);
+        return false;
+    }
+
+    char req[220];
+    int req_len = snprintf(req, sizeof(req),
+                           "GET /status.html HTTP/1.0\r\n"
+                           "Host: %s\r\n"
+                           "Authorization: Basic YWRtaW46YWRtaW4=\r\n"
+                           "Connection: close\r\n\r\n",
+                           target_ip);
+    if (send(sock, req, (size_t)req_len, 0) <= 0) {
+        close(sock);
+        return false;
+    }
+
+    char *buf = malloc(2049);
+    if (!buf) {
+        close(sock);
+        return false;
+    }
+    size_t total = 0;
+    while (total < 2048) {
+        int r = recv(sock, buf + total, 2048 - total, 0);
+        if (r <= 0) break;
+        total += (size_t)r;
+    }
+    buf[total] = '\0';
+    close(sock);
+
+    char *p = strstr(buf, "webdata_sn");
+    if (p) {
+        p += strlen("webdata_sn");
+        while (*p && !isdigit((unsigned char)*p) && *p != '\n' && *p != ';') p++;
+        if (isdigit((unsigned char)*p)) {
+            uint32_t sn = (uint32_t)strtoul(p, NULL, 10);
+            if (sn > 100000UL) {
+                *out_sn = sn;
+                ESP_LOGI(TAG, "HTTP :80 status.html on %s -> SN=%lu", target_ip, (unsigned long)sn);
+                free(buf);
+                return true;
+            }
+        }
+    }
+    free(buf);
+    return false;
+}
+
+typedef struct {
+    bool scanned;
+    uint32_t sns[8];
+    int8_t rssi[8];
+    int count;
+} ap_sn_cache_t;
+
+static void ap_sn_ensure_scanned(ap_sn_cache_t *cache)
+{
+    if (cache->scanned) return;
+    cache->scanned = true;
+    cache->count = 0;
+
+    wifi_ap_record_t *aps = calloc(20, sizeof(wifi_ap_record_t));
+    if (!aps) return;
+
+    uint16_t max_aps = 20;
+    if (wifi_manager_scan(aps, &max_aps) == ESP_OK) {
+        for (uint16_t i = 0; i < max_aps; i++) {
+            const char *ssid = (const char *)aps[i].ssid;
+            if (strncmp(ssid, "AP_", 3) == 0 && isdigit((unsigned char)ssid[3])) {
+                const char *d = ssid + 3;
+                bool all_digits = true;
+                size_t dlen = strlen(d);
+                if (dlen < 7 || dlen > 10) all_digits = false;
+                for (size_t k = 0; k < dlen && all_digits; k++) {
+                    if (!isdigit((unsigned char)d[k])) all_digits = false;
+                }
+                if (all_digits) {
+                    uint32_t sn = (uint32_t)strtoul(d, NULL, 10);
+                    if (sn > 100000UL && cache->count < 8) {
+                        bool dup = false;
+                        for (int j = 0; j < cache->count; j++) {
+                            if (cache->sns[j] == sn) { dup = true; break; }
+                        }
+                        if (!dup) {
+                            cache->sns[cache->count] = sn;
+                            cache->rssi[cache->count] = aps[i].rssi;
+                            cache->count++;
+                        }
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < cache->count - 1; i++) {
+            for (int j = i + 1; j < cache->count; j++) {
+                if (cache->rssi[j] > cache->rssi[i]) {
+                    uint32_t ts = cache->sns[i]; cache->sns[i] = cache->sns[j]; cache->sns[j] = ts;
+                    int8_t tr = cache->rssi[i]; cache->rssi[i] = cache->rssi[j]; cache->rssi[j] = tr;
+                }
+            }
+        }
+        for (int i = 0; i < cache->count; i++) {
+            ESP_LOGI(TAG, "Wi-Fi AP candidate #%d: AP_%lu (RSSI=%d dBm)",
+                     i + 1, (unsigned long)cache->sns[i], (int)cache->rssi[i]);
+        }
+    }
+    free(aps);
+}
+
+static int build_prioritized_hosts(uint8_t *hosts, uint8_t own_host, uint8_t gw_host)
+{
+    int idx = 0;
+    for (int h = 100; h <= 160; h++) {
+        if (h != own_host && h != gw_host) hosts[idx++] = (uint8_t)h;
+    }
+    for (int h = 2; h <= 99; h++) {
+        if (h != own_host && h != gw_host) hosts[idx++] = (uint8_t)h;
+    }
+    for (int h = 161; h <= 254; h++) {
+        if (h != own_host && h != gw_host) hosts[idx++] = (uint8_t)h;
+    }
+    return idx;
+}
+
+static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip, uint8_t gw_host,
+                                discovered_logger_t *list, int *count, int max_count,
+                                bool blind_mode, bool stop_on_first,
+                                ap_sn_cache_t *ap_cache, char tags[][24])
+{
+    const int BATCH = 12;
+    int socks[12];
+    uint32_t ips[12];
+
+    uint8_t hosts[256];
+    uint8_t own_host = (uint8_t)(net_ip & 0xFF);
+    int total_hosts = build_prioritized_hosts(hosts, own_host, gw_host);
+
+    int pos = 0;
+    while (pos < total_hosts && *count < max_count) {
         int n = 0;
         int max_fd = -1;
         fd_set wfds;
         FD_ZERO(&wfds);
 
-        while (n < BATCH && h < 255) {
-            uint32_t ip_h = base | h;
-            if (ip_h == net_ip || (ip_h & 0xFF) == 0 || (ip_h & 0xFF) == 255) {
-                h++;
-                continue;
-            }
-
+        while (n < BATCH && pos < total_hosts) {
+            uint32_t ip_h = base | hosts[pos++];
             int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             if (s < 0) break;
-            h++;
 
             int flags = fcntl(s, F_GETFL, 0);
             fcntl(s, F_SETFL, flags | O_NONBLOCK);
@@ -238,12 +390,14 @@ static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
         }
 
         if (n == 0) {
-            vTaskDelay(pdMS_TO_TICKS(50));
+            vTaskDelay(pdMS_TO_TICKS(30));
             break;
         }
 
-        struct timeval tv = { .tv_sec = 0, .tv_usec = 110000 };
+        struct timeval tv = { .tv_sec = 0, .tv_usec = 650000 };
         int ready = select(max_fd + 1, NULL, &wfds, NULL, &tv);
+        bool confirmed_found = false;
+
         for (int i = 0; i < n; i++) {
             bool open = false;
             if (ready > 0 && FD_ISSET(socks[i], &wfds)) {
@@ -259,46 +413,79 @@ static void tcp8899_scan_prefix(uint32_t base, uint32_t net_ip,
                 struct in_addr ina = { .s_addr = htonl(ips[i]) };
                 char cand_ip[16] = {0};
                 ip4addr_ntoa_r((const ip4_addr_t *)&ina, cand_ip, sizeof(cand_ip));
-                ESP_LOGI(TAG, "TCP 8899 open on %s -> querying UDP 48899 unicast...", cand_ip);
+                ESP_LOGI(TAG, "TCP 8899 open on %s -> resolving SN...", cand_ip);
 
                 char mac[20] = {0};
                 uint32_t sn = 0;
-                if (udp_unicast_query(cand_ip, mac, sizeof(mac), &sn)) {
-                    ESP_LOGI(TAG, "Unicast 48899 reply: IP=%s, MAC=%s, SN=%lu", cand_ip, mac, (unsigned long)sn);
-                } else {
-                    if (g_settings.logger_sn > 0) sn = g_settings.logger_sn;
+                const char *method = "TCP";
+
+                if (udp_unicast_query(cand_ip, mac, sizeof(mac), &sn) && sn > 0) {
+                    method = "TCP+UDP";
+                } else if (http80_query_sn(cand_ip, &sn) && sn > 0) {
+                    method = "TCP+HTTP";
+                } else if (!blind_mode && g_settings.logger_sn > 0) {
+                    sn = g_settings.logger_sn;
                     if (g_settings.logger_mac[0] != '\0') {
                         strncpy(mac, g_settings.logger_mac, sizeof(mac) - 1);
-                        mac[sizeof(mac) - 1] = '\0';
+                    }
+                    method = "TCP+CFG";
+                } else {
+                    ap_sn_ensure_scanned(ap_cache);
+                    for (int a = 0; a < ap_cache->count; a++) {
+                        uint16_t dummy = 0;
+                        vTaskDelay(pdMS_TO_TICKS(120));
+                        if (solarman_v5_read_registers(cand_ip, ap_cache->sns[a], 0, 1, &dummy) == ESP_OK ||
+                            (vTaskDelay(pdMS_TO_TICKS(200)),
+                             solarman_v5_read_registers(cand_ip, ap_cache->sns[a], 0, 1, &dummy) == ESP_OK)) {
+                            sn = ap_cache->sns[a];
+                            method = "TCP+AP_SN";
+                            break;
+                        }
                     }
                 }
-                add_discovered_unique(list, count, max_count, cand_ip, mac, sn);
+
+                add_discovered_unique(list, count, max_count, cand_ip, mac, sn, method, tags);
+                if (sn > 0) confirmed_found = true;
             }
+        }
+
+        if (confirmed_found && stop_on_first) {
+            break;
         }
         vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
 static void tcp8899_subnet_scan(const esp_netif_ip_info_t *sta_ip,
-                                discovered_logger_t *list, int *count, int max_count)
+                                discovered_logger_t *list, int *count, int max_count,
+                                bool blind_mode, bool stop_on_first, char tags[][24])
 {
     if (!sta_ip || sta_ip->ip.addr == 0) return;
 
     uint32_t net_ip = ntohl(sta_ip->ip.addr);
     uint32_t net_mask = ntohl(sta_ip->netmask.addr);
+    uint8_t gw_host = (uint8_t)(ntohl(sta_ip->gw.addr) & 0xFF);
     uint32_t base_primary = (net_ip & net_mask) & 0xFFFFFF00UL;
     uint32_t base_own24   = net_ip & 0xFFFFFF00UL;
 
-    ESP_LOGI(TAG, "UDP 48899 silent -> running TCP %d scan...", SOLARMAN_TCP_PORT);
-    tcp8899_scan_prefix(base_primary, net_ip, list, count, max_count);
+    ap_sn_cache_t ap_cache = {0};
+    ESP_LOGI(TAG, "Running prioritized TCP %d scan (650ms timeout, blind=%d)...",
+             SOLARMAN_TCP_PORT, blind_mode ? 1 : 0);
+    tcp8899_scan_prefix(base_primary, net_ip, gw_host, list, count, max_count,
+                        blind_mode, stop_on_first, &ap_cache, tags);
     if (*count == 0 && base_own24 != base_primary) {
-        tcp8899_scan_prefix(base_own24, net_ip, list, count, max_count);
+        tcp8899_scan_prefix(base_own24, net_ip, gw_host, list, count, max_count,
+                            blind_mode, stop_on_first, &ap_cache, tags);
     }
 }
 
-int logger_discover_all(discovered_logger_t *out_list, int max_count)
+int logger_discover_all_ex(discovered_logger_t *out_list, int max_count, bool blind_mode)
 {
     if (!out_list || max_count <= 0) return 0;
+
+    int64_t t0 = esp_timer_get_time();
+    char tags[8][24] = {{0}};
+    int cap = (max_count > 8) ? 8 : max_count;
 
     esp_netif_ip_info_t sta_ip = {0};
     esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
@@ -308,47 +495,59 @@ int logger_discover_all(discovered_logger_t *out_list, int max_count)
 
     int count = 0;
 
-    // 1. Check currently configured/connected logger first
-    if (strlen(g_settings.logger_ip) >= 7) {
+    if (!blind_mode && strlen(g_settings.logger_ip) >= 7) {
         char mac[20] = {0};
         uint32_t sn = 0;
         deye_data_t cur_d;
         deye_data_get(&cur_d);
         if (udp_unicast_query(g_settings.logger_ip, mac, sizeof(mac), &sn)) {
-            add_discovered_unique(out_list, &count, max_count, g_settings.logger_ip, mac, sn);
+            add_discovered_unique(out_list, &count, cap, g_settings.logger_ip, mac, sn, "CFG+UDP", tags);
         } else if (cur_d.logger_connected && g_settings.logger_sn > 0) {
-            add_discovered_unique(out_list, &count, max_count,
-                                  g_settings.logger_ip, g_settings.logger_mac, g_settings.logger_sn);
+            add_discovered_unique(out_list, &count, cap,
+                                  g_settings.logger_ip, g_settings.logger_mac, g_settings.logger_sn,
+                                  "CFG", tags);
         }
     }
 
-    // 2. UDP 48899 broadcast discovery
-    udp_broadcast_discover(&sta_ip, out_list, &count, max_count);
-
-    // 3. TCP 8899 subnet scan fallback if none found yet
     if (count == 0) {
-        tcp8899_subnet_scan(&sta_ip, out_list, &count, max_count);
+        udp_broadcast_discover(&sta_ip, out_list, &count, cap, tags);
     }
 
+    if (count == 0) {
+        tcp8899_subnet_scan(&sta_ip, out_list, &count, cap, blind_mode, blind_mode, tags);
+    }
+
+    int elapsed_ms = (int)((esp_timer_get_time() - t0) / 1000LL);
     deye_data_t cur_d;
     deye_data_get(&cur_d);
     for (int i = 0; i < count; i++) {
         uint16_t dev_type = 0;
+        const char *mtag = tags[i][0] ? tags[i] : "DISC";
         if (out_list[i].sn > 0 &&
             solarman_v5_read_registers(out_list[i].ip, out_list[i].sn, 0, 1, &dev_type) == ESP_OK) {
             if (dev_type == 0x0500 || dev_type == 0x0600 || dev_type == 0x0601) {
-                snprintf(out_list[i].model, sizeof(out_list[i].model), "Deye Trifazat (0x%04X)", dev_type);
+                snprintf(out_list[i].model, sizeof(out_list[i].model),
+                         "3F 0x%04X [%s %dms]", dev_type, mtag, elapsed_ms);
             } else {
-                snprintf(out_list[i].model, sizeof(out_list[i].model), "Deye Monofazat (0x%04X)", dev_type);
+                snprintf(out_list[i].model, sizeof(out_list[i].model),
+                         "1F 0x%04X [%s %dms]", dev_type, mtag, elapsed_ms);
             }
-        } else if (cur_d.logger_connected && strcmp(out_list[i].ip, g_settings.logger_ip) == 0) {
-            snprintf(out_list[i].model, sizeof(out_list[i].model), "Deye Invertor (Conectat)");
+        } else if (!blind_mode && cur_d.logger_connected && strcmp(out_list[i].ip, g_settings.logger_ip) == 0) {
+            snprintf(out_list[i].model, sizeof(out_list[i].model),
+                     "Deye [%s %dms]", mtag, elapsed_ms);
         } else {
-            snprintf(out_list[i].model, sizeof(out_list[i].model), "Logger Solarman");
+            snprintf(out_list[i].model, sizeof(out_list[i].model),
+                     "Solarman [%s %dms]", mtag, elapsed_ms);
         }
     }
 
+    ESP_LOGI(TAG, "Discovery finished in %d ms: found=%d (blind=%d)", elapsed_ms, count, blind_mode ? 1 : 0);
     return count;
+}
+
+int logger_discover_all(discovered_logger_t *out_list, int max_count)
+{
+    return logger_discover_all_ex(out_list, max_count, false);
 }
 
 bool logger_discover_by_mac(const char *target_mac, uint32_t target_sn,
@@ -358,7 +557,7 @@ bool logger_discover_by_mac(const char *target_mac, uint32_t target_sn,
     normalize_mac(target_mac, norm_target, sizeof(norm_target));
 
     discovered_logger_t found[6];
-    int n = logger_discover_all(found, 6);
+    int n = logger_discover_all_ex(found, 6, (target_sn == 0 && norm_target[0] == '\0'));
     if (n <= 0) return false;
 
     for (int i = 0; i < n; i++) {
